@@ -5,28 +5,21 @@ import {typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
 import {Button} from './Button';
 
-interface EmptyStateProps {
-  title: string;
+interface ErrorViewProps {
   message: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  onRetry?: () => void;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  title,
-  message,
-  actionLabel,
-  onAction,
-}) => {
+export const ErrorView: React.FC<ErrorViewProps> = ({message, onRetry}) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>Something went wrong</Text>
       <Text style={styles.message}>{message}</Text>
-      {actionLabel && onAction && (
+      {onRetry && (
         <Button
-          title={actionLabel}
-          onPress={onAction}
-          variant="primary"
+          title="Try Again"
+          onPress={onRetry}
+          variant="outline"
           size="md"
           style={styles.button}
         />
@@ -43,10 +36,9 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   title: {
-    ...typography.h2,
-    color: colors.text.primary,
+    ...typography.h3,
+    color: colors.error,
     marginBottom: spacing.sm,
-    textAlign: 'center',
   },
   message: {
     ...typography.body,
@@ -55,6 +47,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   button: {
-    minWidth: 160,
+    minWidth: 140,
   },
 });

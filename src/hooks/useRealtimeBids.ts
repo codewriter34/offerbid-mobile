@@ -1,21 +1,66 @@
 import {useEffect} from 'react';
-import {getSocket} from '../services/socketClient';
-
-// TODO: Implement real-time bid subscription hook
-// - Listen to Socket.io events for bid updates
-// - Update local state/store when events arrive
-// - Clean up listener on unmount
+import {subscribeToEvent, joinRoom, leaveRoom} from '../services/socketClient';
+import {useBidStore} from '../store/bidStore';
+import {useListingStore} from '../store/listingStore';
+import {useNotificationStore} from '../store/notificationStore';
+import {Bid, AppNotification, Listing} from '../types';
 
 export function useRealtimeBids(listingId?: string) {
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket || !listingId) return;
+  const updateBid = useBidStore(s => s.updateBid);
+  const addBid = useBidStore(s => s.addBid);
+  const updateListing = useListingStore(s => s.updateListing);
+  const addNotification = useNotificationStore(s => s.addNotification);
 
-    // TODO: Subscribe to bid events for this listing
-    // socket.on(`bid:${listingId}`, handler)
+  useEffect(() => {
+    const unsubs: Array<() => void> = [];
+
+    unsubs.push(
+      subscribeToEvent<Bid>('bid:new', bid => {
+        addBid(bid);
+      }),
+    );
+
+    unsubs.push(
+      subscribeToEvent<Bid>('bid:updated', bid => {
+        updateBid(bid.id, bid);
+      }),
+    );
+
+    unsubs.push(
+      subscribeToEvent<Partial<Listing> & {id: string}>(
+        'listing:updated',
+        listing => {
+          updateListing(listing.id, listing);
+        },
+      ),
+    );
+
+    unsubs.push(
+      subscribeToEvent<AppNotification>('notification:new', notification => {
+        addNotification(notification);
+      }),
+    );
 
     return () => {
-      // TODO: Unsubscribe
+      unsubs.forEach(fn => fn());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!listingId) return;
+    joinRoom(`listing:${listingId}`);
+    return () => {
+      leaveRoom(`listing:${listingId}`);
     };
   }, [listingId]);
+}
+
+export function useRealtimeUser(userId?: string) {
+  useEffect(() => {
+    if (!userId) return;
+    joinRoom(`user:${userId}`);
+    return () => {
+      leaveRoom(`user:${userId}`);
+    };
+  }, [userId]);
 }

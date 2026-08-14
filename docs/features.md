@@ -4,113 +4,90 @@ Status legend: `[ ]` Not started | `[~]` In progress | `[x]` Complete | `[-]` De
 
 ---
 
-## MVP Features (4-week sprint target)
+## Built
 
-### Auth & Hub Selection (Dev A)
-- [ ] Google Sign-In (One-Tap) integration
-- [ ] JWT token storage (react-native-keychain)
-- [ ] Token refresh flow
-- [ ] Hub selection screen (Country -> City -> Neighborhood)
-- [ ] Hub persistence on user profile
-- [ ] Auth-gated navigation (no hub = force hub select)
-
-### Listings & Feed (Dev A + Dev C)
-- [ ] Create listing form (title, description, category, price, min bid)
-- [ ] Image picker (up to 4 photos)
-- [ ] Client-side image compression (react-native-image-resizer)
-- [ ] Cloudinary upload integration
-- [ ] Feed screen — hub-filtered listing fetch
-- [ ] Category filter
-- [ ] Price range filter
-- [ ] Sort by recency
-- [ ] Pull-to-refresh
-- [ ] Infinite scroll pagination
-- [ ] Listing detail screen (image carousel, seller info, bid history)
-
-### Scam Guard (Dev A)
-- [ ] 3 active listing limit for unverified users
-- [ ] Limit check before listing creation
-- [ ] Verification unlock flow (manual admin review for MVP)
-
-### Bidding Engine (Dev B)
-- [ ] Submit bid (custom offer amount)
-- [ ] Bid validation (>= min_bid)
-- [ ] Seller bid dashboard — incoming bids list
-- [ ] Accept bid action
-- [ ] Reject bid action
-- [ ] Counter bid action (with new amount)
-- [ ] Counter-offer loop (buyer receives counter -> can accept/reject/counter back)
-- [ ] Countdown timer per bid (expiry enforcement)
-- [ ] Max 3 active bids per item (anti-spam)
-- [ ] Buyer "My Bids" tracking screen
-
-### Real-time Updates (Dev B)
-- [ ] Socket.io connection setup (wss://offerbid-api.onrender.com/realtime)
-- [ ] Auth token in Socket.io handshake
-- [ ] Live bid status updates (new bid, accepted, rejected, countered)
-- [ ] Live listing status updates (sold, withdrawn)
-- [ ] Reconnection handling
-
-### Push Notifications (Dev B)
-- [ ] Firebase project setup (FCM only, no Firebase Auth)
-- [ ] FCM token capture on login
-- [ ] FCM token registration with backend
-- [ ] Notifee channel configuration (Android)
-- [ ] Notification display (new bid, accepted, rejected, countered, expiring)
-- [ ] Notification press -> navigate to relevant screen
-- [ ] Background/killed-app notification handling
-
-### WhatsApp Bridge (Dev B)
-- [ ] Deep link builder (wa.me URL with pre-filled message)
-- [ ] "Chat Seller on WhatsApp" button (post-acceptance only)
-- [ ] Pre-filled message: item name, accepted price, suggested meetup
-- [ ] Safety banner for public meetup locations
-
-### Notification Center (Dev B + Dev C)
-- [ ] In-app notification list (from API)
-- [ ] Read/unread visual states
-- [ ] Mark as read on tap
-- [ ] Navigate to relevant screen on tap
-- [ ] Unread count badge on tab
-
-### Profile (Dev A + Dev C)
-- [ ] Unified buyer/seller profile display
-- [ ] User info (name, hub, verification status)
-- [ ] My listings section
-- [ ] Active listing count / scam guard status
-- [ ] Hub change option
-- [ ] Logout
-
-### UI / Component Library (Dev C)
-- [ ] Design tokens setup (colors, typography, spacing)
-- [ ] Button component (primary, secondary, outline variants)
-- [ ] ListingCard component
-- [ ] BidCard component (with action buttons)
-- [ ] CategoryBadge component
-- [ ] CountdownTimer component
-- [ ] EmptyState component
-- [ ] LoadingSpinner component
-- [ ] NotificationItem component
-- [ ] Auth screen UI
-- [ ] Hub selection screen UI
-- [ ] Feed screen UI (cards, filters, empty/loading states)
-- [ ] Listing detail screen UI
-- [ ] Create listing screen UI (form, image picker)
-- [ ] Bid dashboard screen UI (seller)
-- [ ] My Bids screen UI (buyer)
-- [ ] Profile screen UI
-- [ ] Notification center screen UI
+| Feature | Screen(s) | Date | Notes |
+|---|---|---|---|
+| Google Sign-In (One-Tap) | Auth | 2026-08-14 | Full flow: Google ID token → NestJS verify → JWT issuance → keychain storage |
+| JWT token storage | Auth (service layer) | 2026-08-14 | react-native-keychain, access + refresh stored securely |
+| Token refresh flow | apiClient interceptor | 2026-08-14 | 401 → auto-refresh → retry queue for concurrent requests |
+| Hub selection (Country → City → Neighborhood) | HubSelect | 2026-08-14 | Fetches hubs from API, 2-step picker, persists via PATCH |
+| Hub persistence on user profile | HubSelect → API | 2026-08-14 | Stored server-side, restored on session restore |
+| Auth-gated navigation | RootNavigator | 2026-08-14 | Conditional rendering: Auth → HubSelect → MainTabs based on state |
+| Create listing form | CreateListing | 2026-08-14 | Title, description, category, starting price, min bid with full validation |
+| Image picker (up to 4 photos) | CreateListing | 2026-08-14 | react-native-image-picker, visual grid with remove |
+| Cloudinary upload integration | cloudinaryUpload service | 2026-08-14 | Unsigned upload, parallel multi-image, error handling per image |
+| Feed screen — hub-filtered listing fetch | Feed | 2026-08-14 | Fetches by user's hub_id, loading/empty/error states |
+| Category filter | Feed | 2026-08-14 | Horizontal chip row, "All" option, filters applied to API call |
+| Sort by recency | Feed | 2026-08-14 | Default sort, passed as query param |
+| Pull-to-refresh | Feed | 2026-08-14 | RefreshControl, resets to page 1 |
+| Infinite scroll pagination | Feed | 2026-08-14 | onEndReached → loadMore, hasMore flag, loading footer |
+| Listing detail screen | ListingDetail | 2026-08-14 | Image carousel with dots, description, bid list, safety banner |
+| Scam Guard (3-listing limit) | CreateListing + Profile | 2026-08-14 | Checks active count, blocks create, shows progress bar on profile |
+| Submit bid (custom offer amount) | SubmitBid | 2026-08-14 | Validates ≥ min_bid, POST to API, success/error alerts |
+| Bid validation (≥ min_bid) | SubmitBid + validators | 2026-08-14 | isValidBidAmount util, enforced in UI |
+| Seller bid dashboard | BidDashboard | 2026-08-14 | Incoming bids list, refresh, real-time subscription |
+| Accept/Reject/Counter actions | BidDashboard + BidCard | 2026-08-14 | Confirmation alerts, PATCH to API, counter modal |
+| Counter-offer loop | BidDashboard + MyBids | 2026-08-14 | Countered bids shown to buyer with accept/reject, seller counter modal |
+| Countdown timer per bid | CountdownTimer component | 2026-08-14 | 1s interval, formatted HH:MM:SS, urgent/expired states, onExpired callback |
+| Max 3 active bids per item | Config constant | 2026-08-14 | MAX_ACTIVE_BIDS_PER_ITEM = 3, enforced server-side |
+| Buyer "My Bids" tracking | MyBids | 2026-08-14 | Grouped by active/resolved, status badges, real-time updates |
+| Socket.io connection | socketClient service | 2026-08-14 | Auth in handshake, reconnection (10 attempts, exponential backoff), room join/leave |
+| Live bid/listing status updates | useRealtimeBids hook | 2026-08-14 | Subscribes to bid:new, bid:updated, listing:updated, notification:new events |
+| Reconnection handling | socketClient service | 2026-08-14 | Auto-reconnect, server disconnect → manual reconnect after 5s |
+| FCM token capture/registration | notifeeService | 2026-08-14 | Token captured on login, registered with backend, refresh listener |
+| Notifee Android channels | notifeeService | 2026-08-14 | "Bid Updates" (HIGH) and "General" (DEFAULT) channels |
+| Notification tap → navigate | NotificationCenter | 2026-08-14 | Parses payload.listing_id, navigates to ListingDetail |
+| Background/killed-app handling | notifeeService | 2026-08-14 | setBackgroundMessageHandler + onBackgroundEvent |
+| WhatsApp deep link builder | whatsappBridge service | 2026-08-14 | Phone formatting (CM/NG), pre-filled message, currency |
+| "Chat Seller on WhatsApp" button | BidCard (post-acceptance) | 2026-08-14 | Green button on accepted bids, opens wa.me URL |
+| Safety banner for public meetups | SafetyBanner component | 2026-08-14 | Shown on ListingDetail, mentions hub location |
+| In-app notification list | NotificationCenter | 2026-08-14 | FlatList from API, refresh, emoji icons per type |
+| Read/unread visual states | NotificationItem | 2026-08-14 | Yellow background for unread, blue dot indicator |
+| Mark as read on tap | NotificationCenter | 2026-08-14 | Optimistic update + API PATCH |
+| Unread count badge on tab | MainTabNavigator | 2026-08-14 | tabBarBadge from notification store, red badge |
+| Unified buyer/seller profile | Profile | 2026-08-14 | Avatar, name, hub, verification badge, stats row |
+| My listings section on profile | Profile | 2026-08-14 | Lists all user's listings with ListingCard |
+| Scam guard status on profile | Profile | 2026-08-14 | Progress bar showing X/3 active listings |
+| Hub change option | Profile | 2026-08-14 | "Change Location" button → HubSelect screen |
+| Logout | Profile | 2026-08-14 | Confirmation alert, clears tokens/state, navigates to Auth |
+| Design tokens system | theme/ | 2026-08-14 | Colors (#FBC91B primary), typography, spacing, borderRadius |
+| Shared component library | components/ | 2026-08-14 | Button (5 variants), ListingCard, BidCard, CategoryBadge, CountdownTimer, EmptyState, LoadingSpinner, NotificationItem, ErrorView, SafetyBanner |
+| Zustand state management | store/ | 2026-08-14 | authStore, listingStore, bidStore, notificationStore |
+| API client with interceptors | apiClient service | 2026-08-14 | Bearer token injection, 401 refresh with request queue |
+| Utility functions | utils/ | 2026-08-14 | formatPrice (XAF/NGN), formatRelativeTime, formatCountdown, validators |
 
 ---
 
-## Post-MVP Backlog (deferred until 100+ weekly organic trades)
+## Not Built Yet
 
-- [-] In-app escrow via Mobile Money aggregators
-- [-] Integrated in-app messaging (beyond WhatsApp bridge)
-- [-] Seller verification badges
-- [-] Automated auction-style timers
-- [-] iOS App Store submission
-- [-] Content moderation for listing photos
+| Feature | Sprint Week | Blocker / Note |
+|---|---|---|
+| Price range filter on feed | Week 3 | UI exists in filter row, API param wired but slider UI not built |
+| Search text filtering | Week 2 | TextInput exists, submit wired, needs backend search endpoint confirmation |
+| ID verification unlock flow | Week 3 | Manual admin review — needs admin panel or API endpoint for verification requests |
+| Firebase project setup | Week 1 | **BLOCKER**: Needs google-services.json downloaded and placed in android/app/ |
+| Google Sign-In client IDs | Week 1 | **BLOCKER**: Needs OAuth client ID configured in Google Cloud Console |
+| Cloudinary account | Week 2 | **BLOCKER**: Needs cloud name and unsigned upload preset configured in .env |
+| Android native project (android/) | Pre-sprint | Need to run `npx react-native init` or manually create android folder |
+| Play Store distribution | Post-sprint | Deferred to after MVP testing |
+
+---
+
+## Future Features (Post-MVP)
+
+| Feature | Priority | Notes |
+|---|---|---|
+| In-app escrow via Mobile Money | High | MoMo/Orange Money aggregator integration — deferred until 100+ weekly trades |
+| Integrated in-app messaging | Medium | Beyond WhatsApp bridge — full chat between buyer/seller |
+| Seller verification badges | Medium | Visual trust indicators after ID verification |
+| Automated auction-style timers | Low | Auto-accept highest bid when timer expires |
+| iOS App Store submission | Medium | RN codebase is iOS-ready, needs Apple developer account + signing |
+| Content moderation for photos | Medium | Flag-and-review system for prohibited items — manual for MVP |
+| Price range slider UI | Low | Replace text inputs with a range slider component on Feed |
+| Notification grouping | Low | Group notifications by listing on Android |
+| Offline-first caching | Medium | Cache listings/bids for 3G/unstable connections |
+| Analytics/tracking | Medium | Track offer acceptance rate, WhatsApp bridge clicks, seller repeat rate |
 
 ---
 

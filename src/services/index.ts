@@ -1,6 +1,35 @@
 export {default as apiClient} from './apiClient';
-export {connectSocket, disconnectSocket, getSocket} from './socketClient';
-export {uploadImage, uploadMultipleImages} from './cloudinaryUpload';
-export {setupNotifications, displayNotification} from './notifeeService';
+export {storeTokens, getTokens, getAccessToken, clearTokens} from './tokenStorage';
+export {
+  configureGoogleSignIn,
+  signInWithGoogle,
+  restoreSession,
+  signOut,
+} from './authService';
+export {
+  connectSocket,
+  disconnectSocket,
+  getSocket,
+  isConnected,
+  subscribeToEvent,
+  emitEvent,
+  joinRoom,
+  leaveRoom,
+} from './socketClient';
+export {
+  configureCloudinary,
+  uploadImage,
+  uploadMultipleImages,
+} from './cloudinaryUpload';
+export {
+  setupNotifications,
+  requestPermission,
+  getFCMToken,
+  registerFCMToken,
+  displayNotification,
+  onNotificationEvent,
+  setupBackgroundHandler,
+  onFCMTokenRefresh,
+} from './notifeeService';
 export {buildWhatsAppUrl, openWhatsApp} from './whatsappBridge';
-export {signInWithGoogle, refreshToken, signOut} from './authService';
+export type {WhatsAppMessageParams} from './whatsappBridge';
