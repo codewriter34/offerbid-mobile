@@ -50,8 +50,8 @@ export const useBidStore = create<BidState>(set => ({
   addBid: bid =>
     set(state => {
       const listingBids = {...state.listingBids};
-      const existing = listingBids[bid.listing_id] ?? [];
-      listingBids[bid.listing_id] = [bid, ...existing];
+      const existing = listingBids[bid.listingId] ?? [];
+      listingBids[bid.listingId] = [bid, ...existing];
       return {
         myBids: [bid, ...state.myBids],
         listingBids,

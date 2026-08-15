@@ -38,7 +38,7 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
     setError(null);
     setSubmitting(true);
     try {
-      await submitBid({listing_id: listingId, amount: numAmount});
+      await submitBid({listingId, offerAmount: numAmount});
       Alert.alert('Bid Submitted', 'Your offer has been sent to the seller!', [
         {text: 'OK', onPress: () => navigation.goBack()},
       ]);

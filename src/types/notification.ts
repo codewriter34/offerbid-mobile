@@ -3,13 +3,15 @@ export type NotificationType =
   | 'bid_accepted'
   | 'bid_rejected'
   | 'bid_countered'
-  | 'bid_expiring';
+  | 'bid_expiring'
+  | 'listing_contact'
+  | 'unknown';
 
 export interface AppNotification {
   id: string;
-  user_id: string;
+  userId: string | null;
   type: NotificationType;
   payload: Record<string, unknown>;
   read: boolean;
-  created_at: string;
+  createdAt: string;
 }

@@ -4,6 +4,7 @@ import axios, {
 } from 'axios';
 import {API_CONFIG, ENDPOINTS} from '../config/api';
 import {getAccessToken, storeTokens, getRefreshToken} from './tokenStorage';
+import {extractTokens} from '../utils/apiNormalize';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -70,13 +71,15 @@ apiClient.interceptors.response.use(
 
       const {data} = await axios.post(
         `${API_CONFIG.BASE_URL}${ENDPOINTS.AUTH.REFRESH}`,
-        {refresh_token: refreshTokenValue},
+        {refreshToken: refreshTokenValue},
+        {timeout: API_CONFIG.TIMEOUT},
       );
 
-      await storeTokens(data.access_token, data.refresh_token);
-      processQueue(null, data.access_token);
+      const tokens = extractTokens(data);
+      await storeTokens(tokens.accessToken, tokens.refreshToken);
+      processQueue(null, tokens.accessToken);
 
-      originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
+      originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);

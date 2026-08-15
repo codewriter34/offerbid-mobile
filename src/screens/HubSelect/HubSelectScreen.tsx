@@ -7,27 +7,34 @@ import {
   StyleSheet,
   Alert,
   StatusBar,
+  TextInput,
 } from 'react-native';
 import {RootStackScreenProps} from '../../types/navigation';
 import {Hub} from '../../types/hub';
 import {useAuthStore} from '../../store/authStore';
 import apiClient from '../../services/apiClient';
 import {ENDPOINTS} from '../../config/api';
-import {HUB_CONFIG} from '../../config/hubs';
+import {OTHER_HUB_LABEL} from '../../config/hubs';
+import {mapHubs, mapUser} from '../../utils/mappers';
 import {LoadingSpinner} from '../../components/LoadingSpinner';
 import {ErrorView} from '../../components/ErrorView';
+import {Button} from '../../components/Button';
+import {Logo} from '../../components/Logo';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
 import {spacing, borderRadius} from '../../theme/spacing';
 
 type Props = RootStackScreenProps<'HubSelect'>;
-
-type Step = 'country' | 'neighborhood';
+type Step = 'country' | 'city' | 'neighborhood';
 
 export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
-  const {setHub, updateUser} = useAuthStore();
+  const {setHub, updateUser, setUser} = useAuthStore();
   const [step, setStep] = useState<Step>('country');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [customCity, setCustomCity] = useState('');
+  const [customNeighborhood, setCustomNeighborhood] = useState('');
+  const [address, setAddress] = useState('');
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -41,8 +48,8 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
     setLoading(true);
     setError(null);
     try {
-      const {data} = await apiClient.get<Hub[]>(ENDPOINTS.HUBS.LIST);
-      setHubs(data);
+      const {data} = await apiClient.get(ENDPOINTS.HUBS.LIST);
+      setHubs(mapHubs(data).hubs);
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Failed to load locations');
     } finally {
@@ -50,24 +57,44 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
     }
   };
 
-  const countries = [...new Set(hubs.map(h => h.country))];
+  const countries = [...new Set(hubs.map(h => h.country).filter(Boolean))];
+  const cities = [
+    ...new Set(
+      hubs.filter(h => h.country === selectedCountry).map(h => h.city).filter(Boolean),
+    ),
+    OTHER_HUB_LABEL,
+  ];
+  const neighborhoods = [
+    ...hubs.filter(
+      h =>
+        h.country === selectedCountry &&
+        h.city === selectedCity &&
+        h.neighborhood &&
+        h.neighborhood !== OTHER_HUB_LABEL,
+    ),
+    {country: selectedCountry ?? '', city: selectedCity ?? '', neighborhood: OTHER_HUB_LABEL},
+  ];
 
-  const neighborhoods = hubs.filter(
-    h => h.country === selectedCountry && h.is_active,
-  );
-
-  const selectCountry = (country: string) => {
-    setSelectedCountry(country);
-    setStep('neighborhood');
-  };
-
-  const selectHub = async (hub: Hub) => {
+  const persistProfile = async (city: string, location: string) => {
+    if (address.trim().length < 2) {
+      Alert.alert('Address required', 'Add a meetup address or landmark.');
+      return;
+    }
     setSaving(true);
     try {
-      await apiClient.patch(ENDPOINTS.HUBS.SELECT, {hub_id: hub.id});
-      setHub(hub);
-      updateUser({hub_id: hub.id});
-      navigation.replace('MainTabs');
+      const {data} = await apiClient.patch(ENDPOINTS.USERS.COMPLETE_PROFILE, {
+        city,
+        address: address.trim(),
+        location,
+      });
+      const user = mapUser(data);
+      if (user.id) {
+        setUser(user);
+      } else {
+        updateUser({city, address: address.trim(), location, profileComplete: true});
+      }
+      setHub({country: selectedCountry ?? '', city, neighborhood: location});
+      navigation.replace('MainTabs', {screen: 'Feed'});
     } catch (err: any) {
       Alert.alert(
         'Error',
@@ -76,6 +103,18 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const selectNeighborhood = (item: Hub) => {
+    if (item.neighborhood === OTHER_HUB_LABEL) {
+      if (customNeighborhood.trim().length < 2) {
+        Alert.alert('Neighborhood required', 'Type the real neighborhood name. Do not save Other.');
+        return;
+      }
+      persistProfile(selectedCity === OTHER_HUB_LABEL ? customCity.trim() : selectedCity!, customNeighborhood.trim());
+      return;
+    }
+    persistProfile(selectedCity!, item.neighborhood);
   };
 
   if (loading) {
@@ -91,69 +130,122 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
 
       <View style={styles.header}>
-        {step === 'neighborhood' && (
+        <Logo size={48} style={styles.logo} />
+        {step !== 'country' && (
           <TouchableOpacity
             onPress={() => {
-              setStep('country');
-              setSelectedCountry(null);
+              if (step === 'neighborhood') setStep('city');
+              else setStep('country');
             }}
             style={styles.backButton}>
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
         )}
         <Text style={styles.title}>
-          {step === 'country' ? 'Select your country' : 'Pick your neighborhood'}
+          {step === 'country'
+            ? 'Select your country'
+            : step === 'city'
+              ? 'Pick your city'
+              : 'Neighborhood and address'}
         </Text>
         <Text style={styles.subtitle}>
-          {step === 'country'
-            ? 'You will see listings near you'
-            : `${selectedCountry} — ${HUB_CONFIG[selectedCountry!]?.city ?? ''}`}
+          Needed before you can post a listing. If your place is missing, choose Other and type it.
         </Text>
+        <TextInput
+          style={styles.input}
+          value={address}
+          onChangeText={setAddress}
+          placeholder="Street / landmark (required)"
+          placeholderTextColor={colors.text.light}
+        />
       </View>
 
       {step === 'country' ? (
         <FlatList
-          data={countries}
+          data={countries.length > 0 ? countries : ['Cameroon', 'Nigeria', 'CAMEROON', 'NIGERIA'].filter((v, i, a) => a.indexOf(v) === i)}
           keyExtractor={item => item}
           contentContainerStyle={styles.list}
           renderItem={({item}) => (
             <TouchableOpacity
               style={styles.optionCard}
-              onPress={() => selectCountry(item)}
-              activeOpacity={0.7}>
-              <Text style={styles.optionFlag}>
-                {item === 'Cameroon' ? '🇨🇲' : '🇳🇬'}
-              </Text>
-              <View>
-                <Text style={styles.optionTitle}>{item}</Text>
-                <Text style={styles.optionSubtitle}>
-                  {HUB_CONFIG[item]?.city ?? ''} —{' '}
-                  {HUB_CONFIG[item]?.neighborhoods.length ?? 0} areas
-                </Text>
-              </View>
+              onPress={() => {
+                setSelectedCountry(item);
+                setStep('city');
+              }}>
+              <Text style={styles.optionTitle}>{item}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      ) : step === 'city' ? (
+        <FlatList
+          data={cities}
+          keyExtractor={item => item}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            selectedCity === OTHER_HUB_LABEL || cities.includes(OTHER_HUB_LABEL) ? (
+              <TextInput
+                style={styles.inputInList}
+                value={customCity}
+                onChangeText={setCustomCity}
+                placeholder="Type city if you picked Other"
+                placeholderTextColor={colors.text.light}
+              />
+            ) : null
+          }
+          renderItem={({item}) => (
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => {
+                setSelectedCity(item);
+                if (item === OTHER_HUB_LABEL && customCity.trim().length < 2) {
+                  Alert.alert('Type the city', 'Do not save the word Other.');
+                  return;
+                }
+                setStep('neighborhood');
+              }}>
+              <Text style={styles.optionTitle}>{item}</Text>
             </TouchableOpacity>
           )}
         />
       ) : (
         <FlatList
           data={neighborhoods}
-          keyExtractor={item => item.id}
+          keyExtractor={(item, index) => `${item.neighborhood}-${index}`}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <TextInput
+              style={styles.inputInList}
+              value={customNeighborhood}
+              onChangeText={setCustomNeighborhood}
+              placeholder="Type neighborhood if you pick Other"
+              placeholderTextColor={colors.text.light}
+            />
+          }
           renderItem={({item}) => (
             <TouchableOpacity
               style={styles.optionCard}
-              onPress={() => selectHub(item)}
-              disabled={saving}
-              activeOpacity={0.7}>
-              <Text style={styles.optionFlag}>📍</Text>
-              <View>
-                <Text style={styles.optionTitle}>{item.neighborhood}</Text>
-                <Text style={styles.optionSubtitle}>
-                  {item.city}, {item.country}
-                </Text>
-              </View>
+              onPress={() => selectNeighborhood(item)}
+              disabled={saving}>
+              <Text style={styles.optionTitle}>{item.neighborhood}</Text>
+              <Text style={styles.optionSubtitle}>
+                {selectedCity === OTHER_HUB_LABEL ? customCity : selectedCity}
+              </Text>
             </TouchableOpacity>
           )}
+          ListFooterComponent={
+            <Button
+              title={saving ? 'Saving...' : 'Save location'}
+              loading={saving}
+              onPress={() =>
+                persistProfile(
+                  selectedCity === OTHER_HUB_LABEL ? customCity.trim() : selectedCity!,
+                  customNeighborhood.trim() || neighborhoods[0]?.neighborhood,
+                )
+              }
+              fullWidth
+              style={{marginTop: spacing.md}}
+            />
+          }
         />
       )}
     </View>
@@ -161,10 +253,7 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: {flex: 1, backgroundColor: colors.background},
   header: {
     backgroundColor: colors.white,
     padding: spacing.xl,
@@ -172,50 +261,37 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  backButton: {
-    marginBottom: spacing.md,
-  },
-  backText: {
-    ...typography.body,
-    color: colors.gradientStart,
-    fontWeight: '600',
-  },
-  title: {
-    ...typography.h1,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-  list: {
+  logo: {marginBottom: spacing.md},
+  backButton: {marginBottom: spacing.md},
+  backText: {...typography.body, color: colors.gradientStart, fontWeight: '600'},
+  title: {...typography.h1, color: colors.text.primary, marginBottom: spacing.xs},
+  subtitle: {...typography.bodySmall, color: colors.text.secondary, marginBottom: spacing.md},
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
+    ...typography.body,
+    color: colors.text.primary,
+    backgroundColor: colors.background,
   },
+  inputInList: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    ...typography.body,
+    color: colors.text.primary,
+    backgroundColor: colors.white,
+    marginBottom: spacing.sm,
+  },
+  list: {padding: spacing.md},
   optionCard: {
     backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
-  optionFlag: {
-    fontSize: 32,
-    marginRight: spacing.md,
-  },
-  optionTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  optionSubtitle: {
-    ...typography.bodySmall,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
+  optionTitle: {...typography.h3, color: colors.text.primary},
+  optionSubtitle: {...typography.bodySmall, color: colors.text.secondary, marginTop: 2},
 });

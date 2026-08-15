@@ -2,7 +2,7 @@ import {useCallback} from 'react';
 import {useNotificationStore} from '../store/notificationStore';
 import apiClient from '../services/apiClient';
 import {ENDPOINTS} from '../config/api';
-import {AppNotification} from '../types';
+import {mapNotifications, unreadCountFrom} from '../utils/mappers';
 
 export function useNotifications() {
   const store = useNotificationStore();
@@ -11,10 +11,15 @@ export function useNotifications() {
     store.setLoading(true);
     store.setError(null);
     try {
-      const {data} = await apiClient.get<AppNotification[]>(
-        ENDPOINTS.NOTIFICATIONS.LIST,
-      );
-      store.setNotifications(data);
+      const {data} = await apiClient.get(ENDPOINTS.NOTIFICATIONS.LIST, {
+        params: {page: 1, limit: 50},
+      });
+      const items = mapNotifications(data);
+      store.setNotifications(items);
+      const unread = unreadCountFrom(data, items);
+      if (unread !== store.unreadCount) {
+        store.setNotifications(items);
+      }
     } catch (err: any) {
       store.setError(
         err.response?.data?.message ?? 'Failed to load notifications',
@@ -29,7 +34,16 @@ export function useNotifications() {
     try {
       await apiClient.patch(ENDPOINTS.NOTIFICATIONS.MARK_READ(id));
     } catch {
-      // Optimistic update — if server fails, the UI already reflects read
+      // Optimistic update
+    }
+  }, []);
+
+  const markAllAsRead = useCallback(async () => {
+    store.markAllAsRead();
+    try {
+      await apiClient.patch(ENDPOINTS.NOTIFICATIONS.READ_ALL);
+    } catch {
+      // Optimistic update
     }
   }, []);
 
@@ -40,6 +54,6 @@ export function useNotifications() {
     error: store.error,
     fetchNotifications,
     markAsRead,
-    markAllAsRead: store.markAllAsRead,
+    markAllAsRead,
   };
 }

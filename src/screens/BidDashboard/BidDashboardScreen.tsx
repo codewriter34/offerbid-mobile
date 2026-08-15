@@ -14,13 +14,12 @@ import {MainTabScreenProps} from '../../types/navigation';
 import {useBids} from '../../hooks/useBids';
 import {useRealtimeUser} from '../../hooks/useRealtimeBids';
 import {useAuthStore} from '../../store/authStore';
-import {openWhatsApp} from '../../services/whatsappBridge';
+import {openWhatsApp, openWhatsAppUrl} from '../../services/whatsappBridge';
 import {BidCard} from '../../components/BidCard';
 import {EmptyState} from '../../components/EmptyState';
 import {ErrorView} from '../../components/ErrorView';
 import {LoadingSpinner} from '../../components/LoadingSpinner';
 import {Button} from '../../components/Button';
-import {isValidBidAmount} from '../../utils/validators';
 import {Bid} from '../../types';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
@@ -31,7 +30,7 @@ type Props = MainTabScreenProps<'BidDashboard'>;
 export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
   const user = useAuthStore(s => s.user);
   const selectedHub = useAuthStore(s => s.selectedHub);
-  const {incomingBids, isLoading, error, fetchIncomingBids, updateBid} = useBids();
+  const {incomingBids, isLoading, error, fetchIncomingBids, respondToBid} = useBids();
   const [refreshing, setRefreshing] = useState(false);
   const [counterModalVisible, setCounterModalVisible] = useState(false);
   const [counterBidId, setCounterBidId] = useState<string | null>(null);
@@ -57,7 +56,10 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
         text: 'Accept',
         onPress: async () => {
           try {
-            await updateBid(bidId, {status: 'accepted'});
+            const updated = await respondToBid(bidId, {action: 'ACCEPT'});
+            if (updated.whatsappUrl) {
+              await openWhatsAppUrl(updated.whatsappUrl);
+            }
           } catch (err: any) {
             Alert.alert('Error', err.message);
           }
@@ -74,7 +76,7 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await updateBid(bidId, {status: 'rejected'});
+            await respondToBid(bidId, {action: 'REJECT'});
           } catch (err: any) {
             Alert.alert('Error', err.message);
           }
@@ -97,9 +99,9 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
     }
     setCounterSubmitting(true);
     try {
-      await updateBid(counterBidId!, {
-        status: 'countered',
-        counter_amount: amount,
+      await respondToBid(counterBidId!, {
+        action: 'COUNTER',
+        counterAmount: amount,
       });
       setCounterModalVisible(false);
     } catch (err: any) {
@@ -109,12 +111,16 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
     }
   };
 
-  const handleWhatsApp = (bid: Bid) => {
+  const handleWhatsApp = async (bid: Bid) => {
+    if (bid.whatsappUrl) {
+      await openWhatsAppUrl(bid.whatsappUrl);
+      return;
+    }
     openWhatsApp({
       sellerPhone: user?.phone ?? '',
-      itemTitle: 'Item',
+      itemTitle: bid.listingTitle ?? 'Item',
       acceptedPrice: bid.amount,
-      hubLocation: selectedHub?.neighborhood ?? '',
+      hubLocation: selectedHub?.neighborhood ?? user?.location ?? '',
     });
   };
 

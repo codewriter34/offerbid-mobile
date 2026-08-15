@@ -21,6 +21,7 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
     error,
     fetchNotifications,
     markAsRead,
+    markAllAsRead,
   } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -39,13 +40,13 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
 
     const payload = notification.payload as {
       listing_id?: string;
+      listingId?: string;
       bid_id?: string;
     };
 
-    if (payload.listing_id) {
-      navigation.navigate('ListingDetail', {
-        listingId: payload.listing_id,
-      });
+    const listingId = payload.listingId ?? payload.listing_id;
+    if (listingId) {
+      navigation.navigate('ListingDetail', {listingId});
     }
   };
 
@@ -62,7 +63,9 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
       <View style={styles.header}>
         <Text style={styles.title}>Notifications</Text>
         {unreadCount > 0 && (
-          <Text style={styles.unreadCount}>{unreadCount} unread</Text>
+          <Text style={styles.unreadCount} onPress={markAllAsRead}>
+            {unreadCount} unread · Mark all read
+          </Text>
         )}
       </View>
 

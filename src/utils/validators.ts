@@ -5,6 +5,15 @@ export function isValidBidAmount(amount: number, minBid: number): boolean {
 const CM_PHONE_REGEX = /^(\+?237)?[26]\d{7,8}$/;
 const NG_PHONE_REGEX = /^(\+?234|0)?[789][01]\d{8}$/;
 
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+export function isValidPassword(password: string): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters';
+  return null;
+}
+
 export function isValidPhone(phone: string): boolean {
   const cleaned = phone.replace(/[\s\-()]/g, '');
   return CM_PHONE_REGEX.test(cleaned) || NG_PHONE_REGEX.test(cleaned);

@@ -4,7 +4,7 @@ import {ListingCategory} from '../types';
 import {typography} from '../theme/typography';
 import {borderRadius} from '../theme/spacing';
 
-const CATEGORY_COLORS: Record<ListingCategory, {bg: string; text: string}> = {
+const CATEGORY_COLORS: Record<string, {bg: string; text: string}> = {
   Tech: {bg: '#E3F2FD', text: '#1565C0'},
   Electronics: {bg: '#F3E5F5', text: '#7B1FA2'},
   Furniture: {bg: '#FFF3E0', text: '#E65100'},
@@ -14,7 +14,7 @@ const CATEGORY_COLORS: Record<ListingCategory, {bg: string; text: string}> = {
 };
 
 interface CategoryBadgeProps {
-  category: ListingCategory;
+  category: ListingCategory | string;
   size?: 'sm' | 'md';
 }
 

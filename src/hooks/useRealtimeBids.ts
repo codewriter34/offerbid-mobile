@@ -1,9 +1,13 @@
 import {useEffect} from 'react';
-import {subscribeToEvent, joinRoom, leaveRoom} from '../services/socketClient';
+import {
+  subscribeToEvent,
+  subscribeToListing,
+  unsubscribeFromListing,
+} from '../services/socketClient';
 import {useBidStore} from '../store/bidStore';
 import {useListingStore} from '../store/listingStore';
 import {useNotificationStore} from '../store/notificationStore';
-import {Bid, AppNotification, Listing} from '../types';
+import {mapBid, mapListing, mapNotification} from '../utils/mappers';
 
 export function useRealtimeBids(listingId?: string) {
   const updateBid = useBidStore(s => s.updateBid);
@@ -14,30 +18,28 @@ export function useRealtimeBids(listingId?: string) {
   useEffect(() => {
     const unsubs: Array<() => void> = [];
 
+    const onBid = (raw: unknown) => {
+      const bid = mapBid(raw);
+      addBid(bid);
+      updateBid(bid.id, bid);
+    };
+
+    unsubs.push(subscribeToEvent('bid:placed', onBid));
+    unsubs.push(subscribeToEvent('bid:countered', onBid));
+    unsubs.push(subscribeToEvent('bid:responded', onBid));
+    unsubs.push(subscribeToEvent('bid:new', onBid));
+    unsubs.push(subscribeToEvent('bid:updated', onBid));
+
     unsubs.push(
-      subscribeToEvent<Bid>('bid:new', bid => {
-        addBid(bid);
+      subscribeToEvent('listing:updated', (raw: unknown) => {
+        const listing = mapListing(raw);
+        if (listing.id) updateListing(listing.id, listing);
       }),
     );
 
     unsubs.push(
-      subscribeToEvent<Bid>('bid:updated', bid => {
-        updateBid(bid.id, bid);
-      }),
-    );
-
-    unsubs.push(
-      subscribeToEvent<Partial<Listing> & {id: string}>(
-        'listing:updated',
-        listing => {
-          updateListing(listing.id, listing);
-        },
-      ),
-    );
-
-    unsubs.push(
-      subscribeToEvent<AppNotification>('notification:new', notification => {
-        addNotification(notification);
+      subscribeToEvent('notification:new', (raw: unknown) => {
+        addNotification(mapNotification(raw));
       }),
     );
 
@@ -48,19 +50,13 @@ export function useRealtimeBids(listingId?: string) {
 
   useEffect(() => {
     if (!listingId) return;
-    joinRoom(`listing:${listingId}`);
+    subscribeToListing(listingId);
     return () => {
-      leaveRoom(`listing:${listingId}`);
+      unsubscribeFromListing(listingId);
     };
   }, [listingId]);
 }
 
-export function useRealtimeUser(userId?: string) {
-  useEffect(() => {
-    if (!userId) return;
-    joinRoom(`user:${userId}`);
-    return () => {
-      leaveRoom(`user:${userId}`);
-    };
-  }, [userId]);
+export function useRealtimeUser(_userId?: string) {
+  useRealtimeBids();
 }

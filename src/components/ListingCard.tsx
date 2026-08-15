@@ -1,6 +1,7 @@
 import React from 'react';
 import {View, Text, Image, TouchableOpacity, StyleSheet} from 'react-native';
 import {Listing} from '../types';
+import {listingImageUrl} from '../utils/apiNormalize';
 import {colors} from '../theme/colors';
 import {typography} from '../theme/typography';
 import {spacing, borderRadius} from '../theme/spacing';
@@ -13,7 +14,7 @@ interface ListingCardProps {
 }
 
 export const ListingCard: React.FC<ListingCardProps> = ({listing, onPress}) => {
-  const thumbnailUrl = listing.images?.[0]?.cloudinary_url;
+  const thumbnailUrl = listingImageUrl(listing);
 
   return (
     <TouchableOpacity
@@ -39,15 +40,15 @@ export const ListingCard: React.FC<ListingCardProps> = ({listing, onPress}) => {
         </Text>
 
         <Text style={styles.price}>
-          {formatPrice(listing.starting_price)}
+          {formatPrice(listing.askingPrice, listing.currency)}
         </Text>
 
         <View style={styles.footer}>
           <Text style={styles.minBid}>
-            Min bid: {formatPrice(listing.min_bid)}
+            Min bid: {formatPrice(listing.minBidPrice, listing.currency)}
           </Text>
           <Text style={styles.time}>
-            {formatRelativeTime(listing.created_at)}
+            {formatRelativeTime(listing.createdAt)}
           </Text>
         </View>
       </View>

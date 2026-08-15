@@ -9,16 +9,17 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import {launchImageLibrary} from 'react-native-image-picker';
+import {pickImagesFromLibrary} from '../../services/imagePicker';
 import {RootStackScreenProps} from '../../types/navigation';
 import {ListingCategory, CreateListingPayload} from '../../types/listing';
 import {useListings} from '../../hooks/useListings';
 import {useAuthStore} from '../../store/authStore';
-import {uploadMultipleImages} from '../../services/cloudinaryUpload';
+import {uploadMediaMany} from '../../services/mediaUpload';
 import {
   LISTING_CATEGORIES,
   MAX_LISTING_IMAGES,
   MAX_ACTIVE_LISTINGS_UNVERIFIED,
+  MAX_ACTIVE_LISTINGS_VERIFIED,
 } from '../../config/hubs';
 import {
   isValidListingTitle,
@@ -46,9 +47,11 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const activeCount = myListings.filter(l => l.status === 'active').length;
-  const atLimit =
-    !user?.is_verified && activeCount >= MAX_ACTIVE_LISTINGS_UNVERIFIED;
+  const listingCap = user?.isVerified
+    ? MAX_ACTIVE_LISTINGS_VERIFIED
+    : MAX_ACTIVE_LISTINGS_UNVERIFIED;
+  const activeCount = myListings.filter(l => String(l.status).toUpperCase() === 'ACTIVE').length;
+  const atLimit = activeCount >= listingCap;
 
   const pickImages = async () => {
     if (imageUris.length >= MAX_LISTING_IMAGES) {
@@ -56,16 +59,11 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
       return;
     }
 
-    const result = await launchImageLibrary({
-      mediaType: 'photo',
+    const uris = await pickImagesFromLibrary({
       selectionLimit: MAX_LISTING_IMAGES - imageUris.length,
       quality: 0.8,
     });
-
-    if (result.assets) {
-      const uris = result.assets
-        .map(a => a.uri)
-        .filter((u): u is string => !!u);
+    if (uris.length > 0) {
       setImageUris(prev => [...prev, ...uris].slice(0, MAX_LISTING_IMAGES));
     }
   };
@@ -103,7 +101,7 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
     if (atLimit) {
       Alert.alert(
         'Listing Limit Reached',
-        `Unverified accounts can have up to ${MAX_ACTIVE_LISTINGS_UNVERIFIED} active listings. Verify your identity to list more.`,
+        `You can have up to ${listingCap} active listings. Verify your identity to raise the cap to ${MAX_ACTIVE_LISTINGS_VERIFIED}.`,
       );
       return;
     }
@@ -114,17 +112,19 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
     try {
       let uploadedUrls: string[] = [];
       if (imageUris.length > 0) {
-        uploadedUrls = await uploadMultipleImages(imageUris);
+        uploadedUrls = await uploadMediaMany(imageUris, 'LISTING');
       }
 
+      const currency = user?.country === 'NIGERIA' ? 'NGN' : 'XAF';
       const payload: CreateListingPayload = {
-        hub_id: user!.hub_id!,
-        category: category!,
         title: title.trim(),
         description: description.trim(),
-        starting_price: parseFloat(startingPrice),
-        min_bid: parseFloat(minBid),
-        image_urls: uploadedUrls,
+        askingPrice: parseFloat(startingPrice),
+        minBidPrice: parseFloat(minBid),
+        currency,
+        category: category!,
+        location: user?.location || user?.city || 'Molyko',
+        images: uploadedUrls,
       };
 
       await createListing(payload);
@@ -154,8 +154,8 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
       {atLimit && (
         <View style={styles.limitBanner}>
           <Text style={styles.limitText}>
-            You have reached the {MAX_ACTIVE_LISTINGS_UNVERIFIED}-listing limit
-            for unverified accounts. Verify your identity to post more.
+            You have reached the {listingCap}-listing limit. Verify your
+            identity to post more.
           </Text>
         </View>
       )}

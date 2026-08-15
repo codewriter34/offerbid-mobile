@@ -18,20 +18,20 @@ interface BidCardProps {
   disabled?: boolean;
 }
 
-const STATUS_COLORS: Record<BidStatus, string> = {
-  pending: colors.warning,
-  accepted: colors.success,
-  rejected: colors.error,
-  countered: colors.gradientStart,
-  expired: colors.text.light,
+const STATUS_COLORS: Record<string, string> = {
+  PENDING: colors.warning,
+  ACCEPTED: colors.success,
+  REJECTED: colors.error,
+  COUNTERED: colors.gradientStart,
+  EXPIRED: colors.text.light,
 };
 
-const STATUS_LABELS: Record<BidStatus, string> = {
-  pending: 'Pending',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-  countered: 'Countered',
-  expired: 'Expired',
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending',
+  ACCEPTED: 'Accepted',
+  REJECTED: 'Rejected',
+  COUNTERED: 'Countered',
+  EXPIRED: 'Expired',
 };
 
 export const BidCard: React.FC<BidCardProps> = ({
@@ -43,28 +43,38 @@ export const BidCard: React.FC<BidCardProps> = ({
   onWhatsApp,
   disabled = false,
 }) => {
-  const statusColor = STATUS_COLORS[bid.status];
+  const status = String(bid.status).toUpperCase() as BidStatus;
+  const statusColor = STATUS_COLORS[status] ?? colors.text.light;
+  const displayAmount = bid.counterAmount && status === 'COUNTERED'
+    ? bid.counterAmount
+    : bid.amount;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.amountRow}>
-          <Text style={styles.amount}>{formatPrice(bid.amount)}</Text>
+          <Text style={styles.amount}>{formatPrice(displayAmount)}</Text>
           <View style={[styles.statusBadge, {backgroundColor: statusColor}]}>
-            <Text style={styles.statusText}>{STATUS_LABELS[bid.status]}</Text>
+            <Text style={styles.statusText}>{STATUS_LABELS[status] ?? status}</Text>
           </View>
         </View>
-        <Text style={styles.time}>{formatRelativeTime(bid.created_at)}</Text>
+        <Text style={styles.time}>{formatRelativeTime(bid.createdAt)}</Text>
       </View>
 
-      {bid.status === 'pending' && bid.expires_at && (
+      {bid.listingTitle ? (
+        <Text style={styles.listingTitle} numberOfLines={1}>
+          {bid.listingTitle}
+        </Text>
+      ) : null}
+
+      {status === 'PENDING' && bid.expiresAt && (
         <View style={styles.timerRow}>
           <Text style={styles.timerLabel}>Expires in:</Text>
-          <CountdownTimer expiresAt={bid.expires_at} />
+          <CountdownTimer expiresAt={bid.expiresAt} />
         </View>
       )}
 
-      {bid.status === 'pending' && isSeller && (
+      {status === 'PENDING' && isSeller && (
         <View style={styles.actions}>
           <Button
             title="Accept"
@@ -93,7 +103,28 @@ export const BidCard: React.FC<BidCardProps> = ({
         </View>
       )}
 
-      {bid.status === 'accepted' && onWhatsApp && (
+      {status === 'COUNTERED' && !isSeller && (
+        <View style={styles.actions}>
+          <Button
+            title="Accept counter"
+            variant="secondary"
+            size="sm"
+            onPress={() => onAccept?.(bid.id)}
+            disabled={disabled}
+            style={styles.actionBtn}
+          />
+          <Button
+            title="Reject"
+            variant="danger"
+            size="sm"
+            onPress={() => onReject?.(bid.id)}
+            disabled={disabled}
+            style={styles.actionBtn}
+          />
+        </View>
+      )}
+
+      {status === 'ACCEPTED' && onWhatsApp && (
         <Button
           title="Chat on WhatsApp"
           variant="secondary"
@@ -142,6 +173,11 @@ const styles = StyleSheet.create({
   time: {
     ...typography.caption,
     color: colors.text.light,
+  },
+  listingTitle: {
+    ...typography.bodySmall,
+    color: colors.text.secondary,
+    marginTop: spacing.xs,
   },
   timerRow: {
     flexDirection: 'row',

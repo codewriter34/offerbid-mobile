@@ -8,8 +8,14 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   ListingDetail: {listingId: string};
   CreateListing: undefined;
-  SubmitBid: {listingId: string; listingTitle: string; minBid: number; startingPrice: number};
+  SubmitBid: {
+    listingId: string;
+    listingTitle: string;
+    minBid: number;
+    startingPrice: number;
+  };
   CounterBid: {bidId: string; currentAmount: number; listingTitle: string};
+  Identity: undefined;
 };
 
 export type MainTabParamList = {

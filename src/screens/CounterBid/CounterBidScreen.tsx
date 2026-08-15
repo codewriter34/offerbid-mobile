@@ -21,7 +21,7 @@ type Props = RootStackScreenProps<'CounterBid'>;
 
 export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
   const {bidId, currentAmount, listingTitle} = route.params;
-  const {updateBid} = useBids();
+  const {respondToBid} = useBids();
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,7 +34,7 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
 
     setSubmitting(true);
     try {
-      await updateBid(bidId, {status: 'countered', counter_amount: numAmount});
+      await respondToBid(bidId, {action: 'COUNTER', counterAmount: numAmount});
       Alert.alert('Counter Sent', 'Your counter offer has been sent.', [
         {text: 'OK', onPress: () => navigation.goBack()},
       ]);

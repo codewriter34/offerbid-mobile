@@ -1,4 +1,4 @@
-export type ListingStatus = 'active' | 'sold' | 'withdrawn';
+export type ListingStatus = 'ACTIVE' | 'SOLD' | 'CLOSED';
 
 export type ListingCategory =
   | 'Tech'
@@ -8,33 +8,37 @@ export type ListingCategory =
   | 'Fashion'
   | 'Books';
 
+export type Currency = 'XAF' | 'NGN';
+
 export interface ListingImage {
-  id: string;
-  listing_id: string;
-  cloudinary_url: string;
-  position: number;
+  id?: string;
+  url: string;
 }
 
 export interface Listing {
   id: string;
-  seller_id: string;
-  hub_id: string;
-  category: ListingCategory;
+  sellerId: string;
+  category: ListingCategory | string;
   title: string;
   description: string;
-  starting_price: number;
-  min_bid: number;
-  status: ListingStatus;
+  askingPrice: number;
+  minBidPrice: number;
+  currency: Currency | string;
+  status: ListingStatus | string;
+  location: string | null;
+  city: string | null;
   images: ListingImage[];
-  created_at: string;
+  highestBidAmount: number | null;
+  createdAt: string;
 }
 
 export interface CreateListingPayload {
-  hub_id: string;
-  category: ListingCategory;
   title: string;
   description: string;
-  starting_price: number;
-  min_bid: number;
-  image_urls: string[];
+  askingPrice: number;
+  minBidPrice: number;
+  currency: Currency;
+  category: ListingCategory;
+  location: string;
+  images: string[];
 }

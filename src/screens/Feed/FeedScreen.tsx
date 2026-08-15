@@ -19,6 +19,7 @@ import {EmptyState} from '../../components/EmptyState';
 import {ErrorView} from '../../components/ErrorView';
 import {LoadingSpinner} from '../../components/LoadingSpinner';
 import {CategoryBadge} from '../../components/CategoryBadge';
+import {Logo} from '../../components/Logo';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
 import {spacing, borderRadius} from '../../theme/spacing';
@@ -40,6 +41,7 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
     resetFilters,
   } = useListings();
   const selectedHub = useAuthStore(s => s.selectedHub);
+  const user = useAuthStore(s => s.user);
   const [searchText, setSearchText] = useState('');
 
   useEffect(() => {
@@ -81,13 +83,18 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.greeting}>OfferBid</Text>
-            {selectedHub && (
-              <Text style={styles.hubLabel}>
-                📍 {selectedHub.neighborhood}, {selectedHub.city}
-              </Text>
-            )}
+          <View style={styles.brand}>
+            <Logo size={36} />
+            <View>
+              <Text style={styles.greeting}>OfferBid</Text>
+              {(selectedHub || user?.city) && (
+                <Text style={styles.hubLabel}>
+                  {selectedHub
+                    ? `${selectedHub.neighborhood}, ${selectedHub.city}`
+                    : [user?.location, user?.city].filter(Boolean).join(', ')}
+                </Text>
+              )}
+            </View>
           </View>
           <TouchableOpacity
             style={styles.addButton}
@@ -189,6 +196,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+    paddingRight: spacing.sm,
   },
   greeting: {
     ...typography.h2,
