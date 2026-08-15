@@ -1,8 +1,9 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../types/navigation';
 import {useAuthStore} from '../store/authStore';
+import {IdentityScreen} from '../screens/Identity/IdentityScreen';
 import {AuthScreen} from '../screens/Auth/AuthScreen';
 import {HubSelectScreen} from '../screens/HubSelect/HubSelectScreen';
 import {MainTabNavigator} from './MainTabNavigator';
@@ -17,11 +18,20 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator: React.FC = () => {
   const {isAuthenticated, isLoading, user} = useAuthStore();
 
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (useAuthStore.getState().isLoading) {
+        useAuthStore.getState().setLoading(false);
+      }
+    }, 6000);
+    return () => clearTimeout(id);
+  }, []);
+
   if (isLoading) {
     return <LoadingSpinner message="Loading..." />;
   }
 
-  const needsHub = isAuthenticated && !user?.hub_id;
+  const needsHub = isAuthenticated && !user?.profileComplete;
 
   return (
     <NavigationContainer>
@@ -53,6 +63,11 @@ export const RootNavigator: React.FC = () => {
               options={{presentation: 'modal'}}
             />
             <Stack.Screen name="HubSelect" component={HubSelectScreen} />
+            <Stack.Screen
+              name="Identity"
+              component={IdentityScreen}
+              options={{presentation: 'modal'}}
+            />
           </>
         )}
       </Stack.Navigator>

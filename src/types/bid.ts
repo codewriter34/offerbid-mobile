@@ -1,22 +1,36 @@
-export type BidStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'expired';
+export type BidStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'COUNTERED'
+  | 'EXPIRED';
+
+export type BidAction = 'ACCEPT' | 'REJECT' | 'COUNTER';
 
 export interface Bid {
   id: string;
-  listing_id: string;
-  buyer_id: string;
+  listingId: string;
+  listingTitle?: string;
+  buyerId: string;
   amount: number;
-  status: BidStatus;
-  parent_bid_id: string | null;
-  expires_at: string;
-  created_at: string;
+  status: BidStatus | string;
+  parentBidId: string | null;
+  counterAmount: number | null;
+  expiresAt: string | null;
+  createdAt: string;
+  whatsappUrl: string | null;
 }
 
 export interface CreateBidPayload {
-  listing_id: string;
-  amount: number;
+  listingId: string;
+  offerAmount: number;
 }
 
-export interface UpdateBidPayload {
-  status: 'accepted' | 'rejected' | 'countered';
-  counter_amount?: number;
+export interface RespondBidPayload {
+  action: BidAction;
+  counterAmount?: number;
+}
+
+export interface CounterRespondPayload {
+  action: 'ACCEPT' | 'REJECT';
 }

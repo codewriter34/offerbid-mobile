@@ -4,7 +4,7 @@ import {MainTabScreenProps} from '../../types/navigation';
 import {useBids} from '../../hooks/useBids';
 import {useRealtimeUser} from '../../hooks/useRealtimeBids';
 import {useAuthStore} from '../../store/authStore';
-import {openWhatsApp} from '../../services/whatsappBridge';
+import {openWhatsApp, openWhatsAppUrl} from '../../services/whatsappBridge';
 import {BidCard} from '../../components/BidCard';
 import {EmptyState} from '../../components/EmptyState';
 import {ErrorView} from '../../components/ErrorView';
@@ -19,7 +19,7 @@ type Props = MainTabScreenProps<'MyBids'>;
 export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
   const user = useAuthStore(s => s.user);
   const selectedHub = useAuthStore(s => s.selectedHub);
-  const {myBids, isLoading, error, fetchMyBids, updateBid} = useBids();
+  const {myBids, isLoading, error, fetchMyBids, respondToCounter} = useBids();
   const [refreshing, setRefreshing] = useState(false);
 
   useRealtimeUser(user?.id);
@@ -36,7 +36,10 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
 
   const handleAcceptCounter = async (bidId: string) => {
     try {
-      await updateBid(bidId, {status: 'accepted'});
+      const updated = await respondToCounter(bidId, {action: 'ACCEPT'});
+      if (updated.whatsappUrl) {
+        await openWhatsAppUrl(updated.whatsappUrl);
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
@@ -44,18 +47,22 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
 
   const handleRejectCounter = async (bidId: string) => {
     try {
-      await updateBid(bidId, {status: 'rejected'});
+      await respondToCounter(bidId, {action: 'REJECT'});
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
   };
 
-  const handleWhatsApp = (bid: Bid) => {
+  const handleWhatsApp = async (bid: Bid) => {
+    if (bid.whatsappUrl) {
+      await openWhatsAppUrl(bid.whatsappUrl);
+      return;
+    }
     openWhatsApp({
       sellerPhone: '',
-      itemTitle: 'Item',
+      itemTitle: bid.listingTitle ?? 'Item',
       acceptedPrice: bid.amount,
-      hubLocation: selectedHub?.neighborhood ?? '',
+      hubLocation: selectedHub?.neighborhood ?? user?.location ?? '',
     });
   };
 
@@ -67,8 +74,14 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
     return <ErrorView message={error} onRetry={fetchMyBids} />;
   }
 
-  const pendingBids = myBids.filter(b => b.status === 'pending' || b.status === 'countered');
-  const resolvedBids = myBids.filter(b => b.status !== 'pending' && b.status !== 'countered');
+  const pendingBids = myBids.filter(b => {
+    const s = String(b.status).toUpperCase();
+    return s === 'PENDING' || s === 'COUNTERED';
+  });
+  const resolvedBids = myBids.filter(b => {
+    const s = String(b.status).toUpperCase();
+    return s !== 'PENDING' && s !== 'COUNTERED';
+  });
 
   return (
     <View style={styles.container}>
@@ -95,16 +108,20 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
             bid={item}
             isSeller={false}
             onAccept={
-              item.status === 'countered'
+              String(item.status).toUpperCase() === 'COUNTERED'
                 ? handleAcceptCounter
                 : undefined
             }
             onReject={
-              item.status === 'countered'
+              String(item.status).toUpperCase() === 'COUNTERED'
                 ? handleRejectCounter
                 : undefined
             }
-            onWhatsApp={item.status === 'accepted' ? handleWhatsApp : undefined}
+            onWhatsApp={
+              String(item.status).toUpperCase() === 'ACCEPTED'
+                ? handleWhatsApp
+                : undefined
+            }
           />
         )}
         ListEmptyComponent={

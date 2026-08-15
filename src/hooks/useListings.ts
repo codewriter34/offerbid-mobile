@@ -3,7 +3,9 @@ import {useListingStore} from '../store/listingStore';
 import {useAuthStore} from '../store/authStore';
 import apiClient from '../services/apiClient';
 import {ENDPOINTS} from '../config/api';
-import {Listing, CreateListingPayload} from '../types';
+import {Listing, CreateListingPayload, ListingStatus} from '../types';
+import {extractWhatsAppUrl} from '../utils/apiNormalize';
+import {mapListing, mapListings} from '../utils/mappers';
 
 const PAGE_SIZE = 20;
 
@@ -11,10 +13,20 @@ export function useListings() {
   const store = useListingStore();
   const user = useAuthStore(s => s.user);
 
+  const buildFeedParams = (page: number) => {
+    const params: Record<string, unknown> = {
+      page,
+      limit: PAGE_SIZE,
+      status: 'ACTIVE',
+    };
+    if (user?.city) params.city = user.city;
+    if (user?.location) params.location = user.location;
+    if (store.filters.category) params.category = store.filters.category;
+    return params;
+  };
+
   const fetchListings = useCallback(
     async (refresh = false) => {
-      if (!user?.hub_id) return;
-
       if (refresh) {
         store.setRefreshing(true);
         store.setPage(1);
@@ -25,30 +37,22 @@ export function useListings() {
       store.setError(null);
 
       try {
-        const params: Record<string, unknown> = {
-          hub_id: user.hub_id,
-          page: refresh ? 1 : store.page,
-          limit: PAGE_SIZE,
-          sort: store.filters.sortBy,
+        const page = refresh ? 1 : store.page;
+        const search = store.filters.search.trim();
+        const params = {
+          ...buildFeedParams(page),
+          ...(search.length >= 2 ? {q: search} : {}),
         };
-        if (store.filters.category) params.category = store.filters.category;
-        if (store.filters.minPrice != null)
-          params.min_price = store.filters.minPrice;
-        if (store.filters.maxPrice != null)
-          params.max_price = store.filters.maxPrice;
-        if (store.filters.search) params.search = store.filters.search;
+        const path = search.length >= 2 ? ENDPOINTS.SEARCH : ENDPOINTS.LISTINGS.LIST;
+        const {data} = await apiClient.get(path, {params});
+        const items = mapListings(data);
 
-        const {data} = await apiClient.get<{
-          items: Listing[];
-          total: number;
-        }>(ENDPOINTS.LISTINGS.LIST, {params});
-
-        if (refresh || store.page === 1) {
-          store.setListings(data.items);
+        if (refresh || page === 1) {
+          store.setListings(items);
         } else {
-          store.appendListings(data.items);
+          store.appendListings(items);
         }
-        store.setHasMore(data.items.length === PAGE_SIZE);
+        store.setHasMore(items.length === PAGE_SIZE);
       } catch (err: any) {
         store.setError(err.response?.data?.message ?? 'Failed to load listings');
       } finally {
@@ -56,47 +60,40 @@ export function useListings() {
         store.setRefreshing(false);
       }
     },
-    [user?.hub_id, store.page, store.filters],
+    [user?.city, user?.location, store.page, store.filters],
   );
 
   const loadMore = useCallback(async () => {
     if (store.isLoadingMore || !store.hasMore) return;
     store.setLoadingMore(true);
-    store.setPage(store.page + 1);
+    const nextPage = store.page + 1;
+    store.setPage(nextPage);
     try {
-      const params: Record<string, unknown> = {
-        hub_id: user?.hub_id,
-        page: store.page + 1,
-        limit: PAGE_SIZE,
-        sort: store.filters.sortBy,
+      const search = store.filters.search.trim();
+      const params = {
+        ...buildFeedParams(nextPage),
+        ...(search.length >= 2 ? {q: search} : {}),
       };
-      if (store.filters.category) params.category = store.filters.category;
-      if (store.filters.minPrice != null)
-        params.min_price = store.filters.minPrice;
-      if (store.filters.maxPrice != null)
-        params.max_price = store.filters.maxPrice;
-      if (store.filters.search) params.search = store.filters.search;
-
-      const {data} = await apiClient.get<{items: Listing[]; total: number}>(
-        ENDPOINTS.LISTINGS.LIST,
-        {params},
-      );
-      store.appendListings(data.items);
-      store.setHasMore(data.items.length === PAGE_SIZE);
+      const path = search.length >= 2 ? ENDPOINTS.SEARCH : ENDPOINTS.LISTINGS.LIST;
+      const {data} = await apiClient.get(path, {params});
+      const items = mapListings(data);
+      store.appendListings(items);
+      store.setHasMore(items.length === PAGE_SIZE);
     } catch (err: any) {
       store.setError(err.response?.data?.message ?? 'Failed to load more');
     } finally {
       store.setLoadingMore(false);
     }
-  }, [user?.hub_id, store.page, store.hasMore, store.isLoadingMore, store.filters]);
+  }, [user?.city, user?.location, store.page, store.hasMore, store.isLoadingMore, store.filters]);
 
   const fetchListingById = useCallback(async (id: string) => {
     store.setLoading(true);
     store.setError(null);
     try {
-      const {data} = await apiClient.get<Listing>(ENDPOINTS.LISTINGS.DETAIL(id));
-      store.setCurrentListing(data);
-      return data;
+      const {data} = await apiClient.get(ENDPOINTS.LISTINGS.DETAIL(id));
+      const listing = mapListing(data);
+      store.setCurrentListing(listing);
+      return listing;
     } catch (err: any) {
       store.setError(err.response?.data?.message ?? 'Failed to load listing');
       return null;
@@ -107,8 +104,8 @@ export function useListings() {
 
   const fetchMyListings = useCallback(async () => {
     try {
-      const {data} = await apiClient.get<Listing[]>(ENDPOINTS.LISTINGS.MY_LISTINGS);
-      store.setMyListings(data);
+      const {data} = await apiClient.get(ENDPOINTS.LISTINGS.MY_LISTINGS);
+      store.setMyListings(mapListings(data));
     } catch (err: any) {
       store.setError(err.response?.data?.message ?? 'Failed to load your listings');
     }
@@ -123,19 +120,41 @@ export function useListings() {
           ENDPOINTS.LISTINGS.CREATE,
           payload,
         );
-        store.setMyListings([data, ...store.myListings]);
-        return data;
+        const listing = mapListing(data);
+        store.setMyListings([listing, ...store.myListings]);
+        return listing;
       } catch (err: any) {
         const message =
           err.response?.data?.message ?? 'Failed to create listing';
         store.setError(message);
-        throw new Error(message);
+        throw new Error(Array.isArray(message) ? message.join(', ') : message);
       } finally {
         store.setLoading(false);
       }
     },
     [store.myListings],
   );
+
+  const updateListingStatus = useCallback(
+    async (id: string, status: ListingStatus) => {
+      const {data} = await apiClient.patch(ENDPOINTS.LISTINGS.STATUS(id), {status});
+      const listing = mapListing(data);
+      store.updateListing(id, listing);
+      return listing;
+    },
+    [],
+  );
+
+  const contactSeller = useCallback(async (id: string) => {
+    const {data} = await apiClient.post(ENDPOINTS.LISTINGS.CONTACT(id));
+    const url = extractWhatsAppUrl(data);
+    if (!url) throw new Error('No WhatsApp link returned');
+    return url;
+  }, []);
+
+  const reportListing = useCallback(async (listingId: string, reason: string) => {
+    await apiClient.post(ENDPOINTS.REPORTS, {listingId, reason});
+  }, []);
 
   return {
     listings: store.listings,
@@ -152,6 +171,9 @@ export function useListings() {
     fetchListingById,
     fetchMyListings,
     createListing,
+    updateListingStatus,
+    contactSeller,
+    reportListing,
     setFilters: store.setFilters,
     resetFilters: store.resetFilters,
     setCurrentListing: store.setCurrentListing,

@@ -20,18 +20,22 @@ const NOTIFICATION_CONFIG: Record<
   bid_rejected: {icon: '❌', label: 'Bid rejected', color: colors.error},
   bid_countered: {icon: '🔄', label: 'Counter offer', color: colors.gradientStart},
   bid_expiring: {icon: '⏰', label: 'Bid expiring soon', color: colors.warning},
+  listing_contact: {icon: '💬', label: 'Buyer contacted you', color: colors.gradientStart},
+  unknown: {icon: '🔔', label: 'Notification', color: colors.text.secondary},
 };
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onPress,
 }) => {
-  const config = NOTIFICATION_CONFIG[notification.type];
+  const config = NOTIFICATION_CONFIG[notification.type] ?? NOTIFICATION_CONFIG.unknown;
   const payload = notification.payload as {
     listing_title?: string;
+    listingTitle?: string;
     amount?: number;
     message?: string;
   };
+  const listingTitle = payload.listingTitle ?? payload.listing_title;
 
   return (
     <TouchableOpacity
@@ -47,9 +51,9 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
 
       <View style={styles.content}>
         <Text style={styles.label}>{config.label}</Text>
-        {payload.listing_title && (
+        {listingTitle && (
           <Text style={styles.detail} numberOfLines={1}>
-            {payload.listing_title}
+            {listingTitle}
             {payload.amount ? ` — ${payload.amount}` : ''}
           </Text>
         )}
@@ -59,7 +63,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
           </Text>
         )}
         <Text style={styles.time}>
-          {formatRelativeTime(notification.created_at)}
+          {formatRelativeTime(notification.createdAt)}
         </Text>
       </View>
 

@@ -8,3 +8,4 @@ export {LoadingSpinner} from './LoadingSpinner';
 export {NotificationItem} from './NotificationItem';
 export {ErrorView} from './ErrorView';
 export {SafetyBanner} from './SafetyBanner';
+export {Logo} from './Logo';

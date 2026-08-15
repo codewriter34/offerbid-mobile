@@ -5,10 +5,13 @@ let socket: Socket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
 export type SocketEvent =
+  | 'bid:placed'
+  | 'bid:countered'
+  | 'bid:responded'
+  | 'notification:new'
   | 'bid:new'
   | 'bid:updated'
-  | 'listing:updated'
-  | 'notification:new';
+  | 'listing:updated';
 
 interface SocketCallbacks {
   onConnect?: () => void;
@@ -76,6 +79,14 @@ export function subscribeToEvent<T = unknown>(
 
 export function emitEvent(event: string, data?: unknown): void {
   socket?.emit(event, data);
+}
+
+export function subscribeToListing(listingId: string): void {
+  socket?.emit('subscribeToListing', listingId);
+}
+
+export function unsubscribeFromListing(listingId: string): void {
+  socket?.emit('unsubscribeFromListing', listingId);
 }
 
 export function joinRoom(room: string): void {

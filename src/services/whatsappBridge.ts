@@ -29,12 +29,8 @@ export function buildWhatsAppUrl(params: WhatsAppMessageParams): string {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
-export async function openWhatsApp(
-  params: WhatsAppMessageParams,
-): Promise<boolean> {
-  const url = buildWhatsAppUrl(params);
+export async function openWhatsAppUrl(url: string): Promise<boolean> {
   const canOpen = await Linking.canOpenURL(url);
-
   if (!canOpen) {
     Alert.alert(
       'WhatsApp Not Available',
@@ -42,7 +38,12 @@ export async function openWhatsApp(
     );
     return false;
   }
-
   await Linking.openURL(url);
   return true;
+}
+
+export async function openWhatsApp(
+  params: WhatsAppMessageParams,
+): Promise<boolean> {
+  return openWhatsAppUrl(buildWhatsAppUrl(params));
 }

@@ -29,6 +29,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
+    backgroundColor: colors.white,
   },
   inline: {
     flex: 0,

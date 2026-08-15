@@ -1,60 +1,96 @@
-import notifee, {
-  AndroidImportance,
-  AndroidStyle,
-  EventType,
-  Event,
-} from '@notifee/react-native';
-import messaging from '@react-native-firebase/messaging';
+import * as Notifications from 'expo-notifications';
 import {Platform} from 'react-native';
 import apiClient from './apiClient';
 import {ENDPOINTS} from '../config/api';
+import {IS_EXPO_GO} from '../config/env';
 
 const CHANNEL_ID_BIDS = 'offerbid-bids';
-const CHANNEL_ID_GENERAL = 'offerbid-general';
+
+let lastFcmToken: string | null = null;
+let tokenRefreshUnsub: Notifications.EventSubscription | null = null;
+
+if (!IS_EXPO_GO) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 export async function setupNotifications(): Promise<void> {
+  if (IS_EXPO_GO) {
+    return;
+  }
   if (Platform.OS === 'android') {
-    await notifee.createChannel({
-      id: CHANNEL_ID_BIDS,
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID_BIDS, {
       name: 'Bid Updates',
-      importance: AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
       sound: 'default',
-      vibration: true,
     });
-
-    await notifee.createChannel({
-      id: CHANNEL_ID_GENERAL,
+    await Notifications.setNotificationChannelAsync('offerbid-general', {
       name: 'General',
-      importance: AndroidImportance.DEFAULT,
+      importance: Notifications.AndroidImportance.DEFAULT,
       sound: 'default',
     });
   }
 }
 
 export async function requestPermission(): Promise<boolean> {
-  if (Platform.OS === 'ios') {
-    const authStatus = await messaging().requestPermission();
-    return (
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL
-    );
+  if (IS_EXPO_GO) {
+    return false;
   }
-
-  const settings = await notifee.requestPermission();
-  return settings.authorizationStatus >= 1;
+  const settings = await Notifications.requestPermissionsAsync();
+  return (
+    settings.granted ||
+    settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+  );
 }
 
 export async function getFCMToken(): Promise<string | null> {
-  try {
-    const token = await messaging().getToken();
-    return token;
-  } catch {
+  if (IS_EXPO_GO) {
     return null;
+  }
+  try {
+    const device = await Notifications.getDevicePushTokenAsync();
+    lastFcmToken = typeof device.data === 'string' ? device.data : null;
+    return lastFcmToken;
+  } catch {
+    try {
+      const expoToken = await Notifications.getExpoPushTokenAsync();
+      lastFcmToken = expoToken.data;
+      return lastFcmToken;
+    } catch {
+      return null;
+    }
   }
 }
 
+export function getCachedFcmToken(): string | null {
+  return lastFcmToken;
+}
+
 export async function registerFCMToken(token: string): Promise<void> {
-  await apiClient.put(ENDPOINTS.USERS.FCM_TOKEN, {fcm_token: token});
+  lastFcmToken = token;
+  await apiClient.post(ENDPOINTS.DEVICES, {
+    token,
+    platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
+  });
+}
+
+export async function unregisterFCMToken(token?: string): Promise<void> {
+  const value = token ?? lastFcmToken;
+  if (!value) return;
+  try {
+    await apiClient.delete(ENDPOINTS.DEVICES, {data: {token: value}});
+  } catch {
+    // Best-effort on logout
+  }
+  lastFcmToken = null;
 }
 
 export async function displayNotification(
@@ -62,54 +98,38 @@ export async function displayNotification(
   body: string,
   data?: Record<string, string>,
 ): Promise<void> {
-  const channelId = data?.type?.includes('bid')
-    ? CHANNEL_ID_BIDS
-    : CHANNEL_ID_GENERAL;
-
-  await notifee.displayNotification({
-    title,
-    body,
-    data,
-    android: {
-      channelId,
-      smallIcon: 'ic_notification',
-      pressAction: {id: 'default'},
-      style: {type: AndroidStyle.BIGTEXT, text: body},
-    },
+  await Notifications.scheduleNotificationAsync({
+    content: {title, body, data},
+    trigger: null,
   });
 }
 
 export function onNotificationEvent(
   callback: (type: string, data?: Record<string, string>) => void,
 ) {
-  return notifee.onForegroundEvent(({type, detail}: Event) => {
-    if (type === EventType.PRESS && detail.notification?.data) {
-      callback(
-        detail.notification.data.type as string,
-        detail.notification.data as Record<string, string>,
-      );
-    }
+  return Notifications.addNotificationResponseReceivedListener(response => {
+    const data = response.notification.request.content.data as
+      | Record<string, string>
+      | undefined;
+    callback(data?.type ?? '', data);
   });
 }
 
 export function setupBackgroundHandler() {
-  notifee.onBackgroundEvent(async ({type, detail}: Event) => {
-    if (type === EventType.PRESS && detail.notification?.id) {
-      await notifee.cancelNotification(detail.notification.id);
-    }
-  });
-
-  messaging().setBackgroundMessageHandler(async remoteMessage => {
-    if (remoteMessage.notification) {
-      await displayNotification(
-        remoteMessage.notification.title ?? 'OfferBid',
-        remoteMessage.notification.body ?? '',
-        remoteMessage.data as Record<string, string>,
-      );
-    }
-  });
+  // Expo handles background presentation via setNotificationHandler.
 }
 
 export function onFCMTokenRefresh(callback: (token: string) => void) {
-  return messaging().onTokenRefresh(callback);
+  tokenRefreshUnsub?.remove();
+  tokenRefreshUnsub = Notifications.addPushTokenListener(token => {
+    const value = typeof token.data === 'string' ? token.data : '';
+    if (value) {
+      lastFcmToken = value;
+      callback(value);
+    }
+  });
+  return () => {
+    tokenRefreshUnsub?.remove();
+    tokenRefreshUnsub = null;
+  };
 }

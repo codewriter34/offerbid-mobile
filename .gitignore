@@ -43,6 +43,11 @@ coverage/
 # Metro
 .metro-health-check*
 
+# Expo
+.expo/
+dist/
+web-build/
+
 # Temporary
 tmp/
 temp/

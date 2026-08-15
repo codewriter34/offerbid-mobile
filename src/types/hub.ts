@@ -1,7 +1,13 @@
 export interface Hub {
-  id: string;
-  country: 'Cameroon' | 'Nigeria';
+  id?: string;
+  country: string;
   city: string;
   neighborhood: string;
-  is_active: boolean;
+  isActive?: boolean;
+}
+
+export interface HubsResponse {
+  hubs: Hub[];
+  categories: string[];
+  cities: string[];
 }

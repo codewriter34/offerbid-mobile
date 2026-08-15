@@ -15,7 +15,8 @@ import {useListings} from '../../hooks/useListings';
 import {useBids} from '../../hooks/useBids';
 import {useRealtimeBids} from '../../hooks/useRealtimeBids';
 import {useAuthStore} from '../../store/authStore';
-import {openWhatsApp} from '../../services/whatsappBridge';
+import {openWhatsAppUrl} from '../../services/whatsappBridge';
+import {listingImageUrls} from '../../utils/apiNormalize';
 import {formatPrice, formatRelativeTime} from '../../utils/formatters';
 import {LoadingSpinner} from '../../components/LoadingSpinner';
 import {ErrorView} from '../../components/ErrorView';
@@ -23,7 +24,6 @@ import {BidCard} from '../../components/BidCard';
 import {Button} from '../../components/Button';
 import {CategoryBadge} from '../../components/CategoryBadge';
 import {SafetyBanner} from '../../components/SafetyBanner';
-import {EmptyState} from '../../components/EmptyState';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
 import {spacing, borderRadius} from '../../theme/spacing';
@@ -34,8 +34,16 @@ const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {listingId} = route.params;
-  const {currentListing, isLoading, error, fetchListingById} = useListings();
-  const {listingBids, fetchListingBids, updateBid} = useBids();
+  const {
+    currentListing,
+    isLoading,
+    error,
+    fetchListingById,
+    contactSeller,
+    updateListingStatus,
+    reportListing,
+  } = useListings();
+  const {listingBids, fetchListingBids, respondToBid} = useBids();
   const user = useAuthStore(s => s.user);
   const selectedHub = useAuthStore(s => s.selectedHub);
   const [imageIndex, setImageIndex] = useState(0);
@@ -48,11 +56,14 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   }, [listingId]);
 
   const bids = listingBids[listingId] ?? [];
-  const isSeller = currentListing?.seller_id === user?.id;
+  const isSeller = currentListing?.sellerId === user?.id;
 
   const handleAccept = async (bidId: string) => {
     try {
-      await updateBid(bidId, {status: 'accepted'});
+      const updated = await respondToBid(bidId, {action: 'ACCEPT'});
+      if (updated.whatsappUrl) {
+        await openWhatsAppUrl(updated.whatsappUrl);
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
@@ -66,7 +77,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await updateBid(bidId, {status: 'rejected'});
+            await respondToBid(bidId, {action: 'REJECT'});
           } catch (err: any) {
             Alert.alert('Error', err.message);
           }
@@ -85,14 +96,69 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     });
   };
 
-  const handleWhatsApp = (bid: Bid) => {
-    if (!currentListing || !user) return;
-    openWhatsApp({
-      sellerPhone: user.phone ?? '',
-      itemTitle: currentListing.title,
-      acceptedPrice: bid.amount,
-      hubLocation: selectedHub?.neighborhood ?? '',
-    });
+  const handleWhatsApp = async (bid: Bid) => {
+    if (bid.whatsappUrl) {
+      await openWhatsAppUrl(bid.whatsappUrl);
+      return;
+    }
+    if (!currentListing) return;
+    try {
+      const url = await contactSeller(currentListing.id);
+      await openWhatsAppUrl(url);
+    } catch (err: any) {
+      Alert.alert('Contact failed', err.message);
+    }
+  };
+
+  const handleContactAsking = async () => {
+    if (!currentListing) return;
+    try {
+      const url = await contactSeller(currentListing.id);
+      await openWhatsAppUrl(url);
+    } catch (err: any) {
+      Alert.alert('Contact failed', err.message);
+    }
+  };
+
+  const handleReport = () => {
+    Alert.prompt
+      ? Alert.prompt(
+          'Report listing',
+          'Why are you reporting this listing?',
+          async reason => {
+            if (!reason || reason.trim().length < 8) {
+              Alert.alert('Reason too short', 'Please write at least 8 characters.');
+              return;
+            }
+            try {
+              await reportListing(currentListing!.id, reason.trim());
+              Alert.alert('Reported', 'Thanks. Our team will review this.');
+            } catch (err: any) {
+              Alert.alert('Report failed', err.message);
+            }
+          },
+        )
+      : Alert.alert(
+          'Report listing',
+          'Send a short reason (min 8 characters) from the next prompt.',
+          [
+            {text: 'Cancel', style: 'cancel'},
+            {
+              text: 'Continue',
+              onPress: async () => {
+                try {
+                  await reportListing(
+                    currentListing!.id,
+                    'This listing looks suspicious or prohibited',
+                  );
+                  Alert.alert('Reported', 'Thanks. Our team will review this.');
+                } catch (err: any) {
+                  Alert.alert('Report failed', err.message);
+                }
+              },
+            },
+          ],
+        );
   };
 
   if (isLoading && !currentListing) {
@@ -112,7 +178,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     return <ErrorView message="Listing not found" />;
   }
 
-  const images = currentListing.images ?? [];
+  const images = listingImageUrls(currentListing).map((url, i) => ({id: String(i), url}));
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -137,7 +203,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
             }}
             renderItem={({item}) => (
               <Image
-                source={{uri: item.cloudinary_url}}
+                source={{uri: item.url}}
                 style={styles.image}
                 resizeMode="cover"
               />
@@ -165,13 +231,18 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
         <Text style={styles.title}>{currentListing.title}</Text>
         <Text style={styles.price}>
-          {formatPrice(currentListing.starting_price)}
+          {formatPrice(currentListing.askingPrice, currentListing.currency)}
         </Text>
         <Text style={styles.minBid}>
-          Min bid: {formatPrice(currentListing.min_bid)}
+          Min bid: {formatPrice(currentListing.minBidPrice, currentListing.currency)}
         </Text>
+        {currentListing.highestBidAmount != null && (
+          <Text style={styles.minBid}>
+            Highest bid: {formatPrice(currentListing.highestBidAmount, currentListing.currency)}
+          </Text>
+        )}
         <Text style={styles.time}>
-          Posted {formatRelativeTime(currentListing.created_at)}
+          Posted {formatRelativeTime(currentListing.createdAt)}
         </Text>
 
         <View style={styles.divider} />
@@ -181,25 +252,71 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
         <View style={styles.divider} />
 
-        {!isSeller && currentListing.status === 'active' && (
-          <Button
-            title="Make an Offer"
-            onPress={() =>
-              navigation.navigate('SubmitBid', {
-                listingId: currentListing.id,
-                listingTitle: currentListing.title,
-                minBid: currentListing.min_bid,
-                startingPrice: currentListing.starting_price,
-              })
-            }
-            variant="primary"
-            size="lg"
-            fullWidth
-            style={styles.bidButton}
-          />
+        {!isSeller && String(currentListing.status).toUpperCase() === 'ACTIVE' && (
+          <>
+            <Button
+              title="Make an Offer"
+              onPress={() =>
+                navigation.navigate('SubmitBid', {
+                  listingId: currentListing.id,
+                  listingTitle: currentListing.title,
+                  minBid: currentListing.minBidPrice,
+                  startingPrice: currentListing.askingPrice,
+                })
+              }
+              variant="primary"
+              size="lg"
+              fullWidth
+              style={styles.bidButton}
+            />
+            <Button
+              title="Contact at asking price"
+              onPress={handleContactAsking}
+              variant="secondary"
+              size="md"
+              fullWidth
+              style={styles.bidButton}
+            />
+          </>
         )}
 
-        {currentListing.status !== 'active' && (
+        {isSeller && (
+          <View style={styles.sellerActions}>
+            <Button
+              title="Mark sold"
+              variant="secondary"
+              size="sm"
+              onPress={() => updateListingStatus(currentListing.id, 'SOLD')}
+              style={styles.actionBtn}
+            />
+            <Button
+              title="Close"
+              variant="outline"
+              size="sm"
+              onPress={() => updateListingStatus(currentListing.id, 'CLOSED')}
+              style={styles.actionBtn}
+            />
+            {String(currentListing.status).toUpperCase() !== 'ACTIVE' && (
+              <Button
+                title="Reopen"
+                variant="ghost"
+                size="sm"
+                onPress={() => updateListingStatus(currentListing.id, 'ACTIVE')}
+                style={styles.actionBtn}
+              />
+            )}
+          </View>
+        )}
+
+        <Button
+          title="Report listing"
+          variant="ghost"
+          size="sm"
+          onPress={handleReport}
+          fullWidth
+        />
+
+        {String(currentListing.status).toUpperCase() !== 'ACTIVE' && (
           <View style={styles.statusBanner}>
             <Text style={styles.statusBannerText}>
               This listing is {currentListing.status}
@@ -207,7 +324,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
           </View>
         )}
 
-        <SafetyBanner hubLocation={selectedHub?.neighborhood} />
+        <SafetyBanner hubLocation={currentListing.location ?? selectedHub?.neighborhood} />
 
         <View style={styles.divider} />
 
@@ -326,7 +443,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   bidButton: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sellerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  actionBtn: {
+    flex: 1,
   },
   statusBanner: {
     backgroundColor: colors.border,

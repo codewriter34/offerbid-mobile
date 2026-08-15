@@ -2,6 +2,12 @@ import {useCallback, useEffect, useRef} from 'react';
 import {useAuthStore} from '../store/authStore';
 import {
   signInWithGoogle,
+  loginWithEmail,
+  registerAccount,
+  verifyOtp,
+  resendOtp,
+  forgotPassword,
+  resetPassword,
   restoreSession,
   signOut as authSignOut,
   configureGoogleSignIn,
@@ -15,10 +21,13 @@ import {
   requestPermission,
   getFCMToken,
   registerFCMToken,
+  unregisterFCMToken,
   onFCMTokenRefresh,
 } from '../services/notifeeService';
 import {getAccessToken} from '../services/tokenStorage';
-import {GOOGLE_WEB_CLIENT_ID} from '../config/env';
+import {GOOGLE_WEB_CLIENT_ID, IS_EXPO_GO} from '../config/env';
+import {withTimeout} from '../utils/withTimeout';
+import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '../types';
 
 export function useAuth() {
   const {user, isAuthenticated, isLoading, setUser, setLoading, setHub, reset} =
@@ -26,7 +35,9 @@ export function useAuth() {
   const tokenRefreshUnsub = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    configureGoogleSignIn(GOOGLE_WEB_CLIENT_ID);
+    if (GOOGLE_WEB_CLIENT_ID) {
+      configureGoogleSignIn(GOOGLE_WEB_CLIENT_ID);
+    }
     bootstrapAuth();
 
     return () => {
@@ -35,17 +46,20 @@ export function useAuth() {
   }, []);
 
   const bootstrapAuth = async () => {
-    setLoading(true);
     try {
-      const restoredUser = await restoreSession();
+      const restoredUser = await withTimeout(restoreSession(), 8000, null);
       if (restoredUser) {
         setUser(restoredUser);
-        await initPostAuthServices();
+        void initPostAuthServices();
       } else {
         setUser(null);
       }
     } catch {
       setUser(null);
+    } finally {
+      if (useAuthStore.getState().isLoading) {
+        useAuthStore.getState().setLoading(false);
+      }
     }
   };
 
@@ -54,6 +68,10 @@ export function useAuth() {
       const token = await getAccessToken();
       if (token) {
         connectSocket(token);
+      }
+
+      if (IS_EXPO_GO) {
+        return;
       }
 
       await setupNotifications();
@@ -72,23 +90,79 @@ export function useAuth() {
     }
   };
 
+  const applySession = async (sessionUser: User) => {
+    setUser(sessionUser);
+    void initPostAuthServices();
+    return sessionUser;
+  };
+
   const signIn = useCallback(async () => {
     setLoading(true);
     try {
       const result = await signInWithGoogle();
-      setUser(result.user);
-      await initPostAuthServices();
-      return result.user;
+      return applySession(result.user);
     } catch (error) {
       setUser(null);
       throw error;
     }
   }, []);
 
+  const login = useCallback(async (payload: LoginPayload) => {
+    setLoading(true);
+    try {
+      const result = await loginWithEmail(payload);
+      return applySession(result.user);
+    } catch (error) {
+      setUser(null);
+      throw error;
+    }
+  }, []);
+
+  const register = useCallback(async (payload: RegisterPayload) => {
+    await registerAccount(payload);
+  }, []);
+
+  const confirmOtp = useCallback(async (payload: VerifyOtpPayload) => {
+    setLoading(true);
+    try {
+      const result = await verifyOtp(payload);
+      return applySession(result.user);
+    } catch (error) {
+      setLoading(false);
+      throw error;
+    }
+  }, []);
+
+  const sendOtp = useCallback(
+    async (email: string, purpose: 'EMAIL_VERIFY' | 'PASSWORD_RESET' = 'EMAIL_VERIFY') => {
+      await resendOtp(email, purpose);
+    },
+    [],
+  );
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    await forgotPassword(email);
+  }, []);
+
+  const confirmPasswordReset = useCallback(
+    async (payload: {email: string; code: string; password: string}) => {
+      setLoading(true);
+      try {
+        const result = await resetPassword(payload);
+        return applySession(result.user);
+      } catch (error) {
+        setLoading(false);
+        throw error;
+      }
+    },
+    [],
+  );
+
   const signOut = useCallback(async () => {
     disconnectSocket();
     tokenRefreshUnsub.current?.();
     tokenRefreshUnsub.current = null;
+    await unregisterFCMToken();
     await authSignOut();
     reset();
   }, []);
@@ -97,8 +171,14 @@ export function useAuth() {
     user,
     isAuthenticated,
     isLoading,
-    needsHubSelection: isAuthenticated && !user?.hub_id,
+    needsProfileComplete: isAuthenticated && !user?.profileComplete,
     signIn,
+    login,
+    register,
+    confirmOtp,
+    sendOtp,
+    requestPasswordReset,
+    confirmPasswordReset,
     signOut,
     setHub,
   };

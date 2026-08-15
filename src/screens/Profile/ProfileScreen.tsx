@@ -6,12 +6,22 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import {MainTabScreenProps} from '../../types/navigation';
 import {useAuth} from '../../hooks/useAuth';
 import {useListings} from '../../hooks/useListings';
 import {useAuthStore} from '../../store/authStore';
-import {MAX_ACTIVE_LISTINGS_UNVERIFIED} from '../../config/hubs';
+import {
+  MAX_ACTIVE_LISTINGS_UNVERIFIED,
+  MAX_ACTIVE_LISTINGS_VERIFIED,
+} from '../../config/hubs';
+import {useIdentity} from '../../hooks/useIdentity';
+import {uploadMedia} from '../../services/mediaUpload';
+import apiClient from '../../services/apiClient';
+import {ENDPOINTS} from '../../config/api';
+import {mapUser} from '../../utils/mappers';
+import {pickOneImage} from '../../services/imagePicker';
 import {ListingCard} from '../../components/ListingCard';
 import {EmptyState} from '../../components/EmptyState';
 import {Button} from '../../components/Button';
@@ -24,14 +34,37 @@ type Props = MainTabScreenProps<'Profile'>;
 export const ProfileScreen: React.FC<Props> = ({navigation}) => {
   const {user, signOut} = useAuth();
   const selectedHub = useAuthStore(s => s.selectedHub);
+  const updateUser = useAuthStore(s => s.updateUser);
   const {myListings, fetchMyListings} = useListings();
+  const {identity, fetchIdentity} = useIdentity();
 
   useEffect(() => {
     fetchMyListings();
+    fetchIdentity();
   }, []);
 
-  const activeListings = myListings.filter(l => l.status === 'active');
-  const soldListings = myListings.filter(l => l.status === 'sold');
+  const activeListings = myListings.filter(
+    l => String(l.status).toUpperCase() === 'ACTIVE',
+  );
+  const soldListings = myListings.filter(
+    l => String(l.status).toUpperCase() === 'SOLD',
+  );
+  const listingCap = identity?.listingCap
+    ?? (user?.isVerified ? MAX_ACTIVE_LISTINGS_VERIFIED : MAX_ACTIVE_LISTINGS_UNVERIFIED);
+  const verified = identity?.status === 'APPROVED' || user?.isVerified;
+
+  const handleAvatar = async () => {
+    const uri = await pickOneImage(0.8);
+    if (!uri) return;
+    try {
+      const url = await uploadMedia(uri, 'AVATAR');
+      const {data} = await apiClient.patch(ENDPOINTS.USERS.AVATAR, {url});
+      const mapped = mapUser(data);
+      updateUser({avatarUrl: mapped.avatarUrl ?? url});
+    } catch (err: any) {
+      Alert.alert('Avatar failed', err?.response?.data?.message ?? err.message);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -41,7 +74,10 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         style: 'destructive',
         onPress: async () => {
           await signOut();
-          navigation.reset({index: 0, routes: [{name: 'Auth'}]});
+          navigation.getParent()?.reset({
+            index: 0,
+            routes: [{name: 'Auth'}],
+          });
         },
       },
     ]);
@@ -54,15 +90,21 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user?.display_name?.charAt(0)?.toUpperCase() ?? '?'}
-          </Text>
-        </View>
-        <Text style={styles.name}>{user?.display_name ?? 'User'}</Text>
-        {selectedHub && (
+        <TouchableOpacity style={styles.avatar} onPress={handleAvatar}>
+          {user?.avatarUrl ? (
+            <Image source={{uri: user.avatarUrl}} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>
+              {user?.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+            </Text>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.name}>{user?.fullName ?? 'User'}</Text>
+        {(selectedHub || user?.city) && (
           <Text style={styles.hub}>
-            📍 {selectedHub.neighborhood}, {selectedHub.city}
+            {selectedHub
+              ? `${selectedHub.neighborhood}, ${selectedHub.city}`
+              : [user?.location, user?.city].filter(Boolean).join(', ')}
           </Text>
         )}
         <View style={styles.badges}>
@@ -70,7 +112,7 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
             style={[
               styles.badge,
               {
-                backgroundColor: user?.is_verified
+                backgroundColor: verified
                   ? colors.success + '20'
                   : colors.warning + '20',
               },
@@ -79,12 +121,10 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
               style={[
                 styles.badgeText,
                 {
-                  color: user?.is_verified
-                    ? colors.success
-                    : colors.warning,
+                  color: verified ? colors.success : colors.warning,
                 },
               ]}>
-              {user?.is_verified ? 'Verified' : 'Unverified'}
+              {verified ? 'Verified' : identity?.status ?? 'Unverified'}
             </Text>
           </View>
         </View>
@@ -107,25 +147,34 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         </View>
       </View>
 
-      {!user?.is_verified && (
-        <View style={styles.scamGuardCard}>
-          <Text style={styles.scamGuardTitle}>Scam Guard</Text>
-          <Text style={styles.scamGuardText}>
-            {activeListings.length}/{MAX_ACTIVE_LISTINGS_UNVERIFIED} active
-            listings used. Verify your identity to remove this limit.
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${(activeListings.length / MAX_ACTIVE_LISTINGS_UNVERIFIED) * 100}%`,
-                },
-              ]}
-            />
-          </View>
+      <View style={styles.scamGuardCard}>
+        <Text style={styles.scamGuardTitle}>Listing cap</Text>
+        <Text style={styles.scamGuardText}>
+          {activeListings.length}/{listingCap} active listings used.
+          {verified
+            ? ' Identity approved.'
+            : ' Verify your identity to raise the cap to 10.'}
+        </Text>
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${Math.min(100, (activeListings.length / listingCap) * 100)}%`,
+              },
+            ]}
+          />
         </View>
-      )}
+        {!verified && (
+          <Button
+            title="Verify identity"
+            variant="outline"
+            size="sm"
+            onPress={() => navigation.navigate('Identity')}
+            style={{marginTop: spacing.md}}
+          />
+        )}
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>My Listings</Text>
@@ -189,7 +238,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
+    overflow: 'hidden',
   },
+  avatarImage: {width: 80, height: 80},
   avatarText: {fontSize: 32, fontWeight: '700', color: colors.gradientStart},
   name: {...typography.h2, color: colors.white, marginBottom: spacing.xs},
   hub: {...typography.bodySmall, color: 'rgba(255,255,255,0.8)'},
