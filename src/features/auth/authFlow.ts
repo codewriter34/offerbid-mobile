@@ -1,0 +1,47 @@
+import {Alert} from 'react-native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '@app/navigation/types';
+import {GoogleSignInStatusCodes} from '@features/auth/authService';
+
+type RootNav = NativeStackNavigationProp<RootStackParamList>;
+
+export function finishAuth(
+  navigation: {getParent?: () => RootNav | undefined} & Pick<
+    RootNav,
+    'replace' | 'goBack' | 'canGoBack' | 'navigate'
+  >,
+  user: {profileComplete: boolean},
+) {
+  const root = navigation.getParent?.() ?? navigation;
+  if (!user.profileComplete) {
+    root.replace('HubSelect');
+    return;
+  }
+  if (root.canGoBack()) {
+    root.goBack();
+    return;
+  }
+  root.navigate('MainTabs', {screen: 'Explore'});
+}
+
+export function showApiError(title: string, error: any) {
+  Alert.alert(
+    title,
+    error?.response?.data?.message ?? error?.message ?? 'Try again.',
+  );
+}
+
+export function showGoogleError(error: any) {
+  if (error?.code === GoogleSignInStatusCodes.SIGN_IN_CANCELLED) return;
+  if (error?.code === GoogleSignInStatusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+    Alert.alert(
+      'Google Play Services Required',
+      'Please update Google Play Services to sign in.',
+    );
+    return;
+  }
+  Alert.alert(
+    'Sign In Failed',
+    error?.message ?? 'Google sign-in is not available in Expo Go yet.',
+  );
+}

@@ -2,6 +2,7 @@ module.exports = {
   expo: {
     name: 'OfferBid',
     slug: 'offerbid',
+    owner: 'tamehchana',
     version: '0.2.0',
     orientation: 'portrait',
     userInterfaceStyle: 'light',
@@ -11,7 +12,7 @@ module.exports = {
     splash: {
       image: './assets/splash-icon.png',
       resizeMode: 'contain',
-      backgroundColor: '#2769E1',
+      backgroundColor: '#0052FF',
     },
     ios: {
       supportsTablet: true,
@@ -19,22 +20,24 @@ module.exports = {
       icon: './assets/store/appstore-icon-1024.png',
     },
     android: {
+      softwareKeyboardLayoutMode: 'resize',
       package: 'com.offerbid.app',
       icon: './assets/icon.png',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
-        backgroundColor: '#2769E1',
+        backgroundColor: '#0052FF',
         monochromeImage: './assets/android-icon-monochrome.png',
       },
     },
     web: {
+      bundler: 'metro',
       favicon: './assets/favicon.png',
     },
     plugins: [
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#2769E1',
+          backgroundColor: '#0052FF',
           image: './assets/splash-icon.png',
           imageWidth: 200,
         },
@@ -43,7 +46,7 @@ module.exports = {
         'expo-notifications',
         {
           icon: './assets/notification-icon.png',
-          color: '#FBC91B',
+          color: '#0052FF',
         },
       ],
       'expo-secure-store',
@@ -75,6 +78,9 @@ module.exports = {
         process.env.CLOUDINARY_UPLOAD_PRESET ??
         process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET ??
         '',
+      eas: {
+        projectId: 'de6f6f5b-bc72-4197-86e4-9158bba3bc70',
+      },
     },
   },
 };
