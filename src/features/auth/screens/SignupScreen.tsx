@@ -4,7 +4,7 @@ import {AuthStackScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
 import {finishAuth, showApiError, showGoogleError} from '@features/auth/authFlow';
 import {COUNTRY_OPTIONS} from '@shared/config/hubs';
-import {Country} from '@shared/types';
+import {Country, PrimaryIntent} from '@shared/types';
 import {
   emailTypingHint,
   isStrongPassword,
@@ -38,6 +38,7 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState<Country>('CAMEROON');
+  const [primaryIntent, setPrimaryIntent] = useState<PrimaryIntent>('BUY');
   const [code, setCode] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -77,6 +78,7 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
         countryCode,
         phone: phone.replace(/\D/g, ''),
         country,
+        primaryIntent,
       });
       setStep('otp');
       Alert.alert('Check your email', 'We sent a 6-digit verification code.');
@@ -177,6 +179,39 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
               />
             }
           />
+          <View className="mb-4">
+            <Text className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-brand-gray">
+              What are you here for first?
+            </Text>
+            <View className="flex-row gap-2">
+              {(
+                [
+                  ['BUY', 'Buy items'],
+                  ['SELL', 'Sell items'],
+                  ['BOTH', 'Both'],
+                ] as const
+              ).map(([value, label]) => {
+                const active = primaryIntent === value;
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => setPrimaryIntent(value)}
+                    className={`flex-1 rounded-xl border px-3 py-3 ${
+                      active
+                        ? 'border-brand-blue bg-[#EAF4FB]'
+                        : 'border-slate-200 bg-white'
+                    }`}>
+                    <Text
+                      className={`text-center text-[13px] font-semibold ${
+                        active ? 'text-brand-blue' : 'text-brand-charcoal'
+                      }`}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
           <View className="mb-5 mt-1">
             <AuthCheckbox
               checked={agreed}

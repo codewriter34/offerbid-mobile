@@ -1,4 +1,5 @@
 export type Country = 'CAMEROON' | 'NIGERIA';
+export type PrimaryIntent = 'BUY' | 'SELL' | 'BOTH';
 
 export interface User {
   id: string;
@@ -7,6 +8,7 @@ export interface User {
   phone: string | null;
   countryCode: string | null;
   country: Country | string | null;
+  primaryIntent?: PrimaryIntent | string | null;
   city: string | null;
   address: string | null;
   location: string | null;
@@ -29,6 +31,7 @@ export interface RegisterPayload {
   countryCode: string;
   phone: string;
   country: Country;
+  primaryIntent?: PrimaryIntent;
 }
 
 export interface LoginPayload {
