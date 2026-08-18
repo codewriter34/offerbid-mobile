@@ -3,6 +3,7 @@ import {Alert, Text, TouchableOpacity, View} from 'react-native';
 import {AuthStackScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
 import {finishAuth, showApiError, showGoogleError} from '@features/auth/authFlow';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {emailTypingHint, isStrongPassword} from '@shared/lib/validators';
 import {
   AuthButton,
@@ -112,7 +113,7 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
     <AuthShell
       centered={step === 'forgot'}
       canClose={navigation.getParent()?.canGoBack() ?? navigation.canGoBack()}
-      onClose={() => navigation.getParent()?.goBack() ?? navigation.goBack()}>
+      onClose={() => dismissScreen(navigation)}>
       <AuthHeading title={heading.title} subtitle={heading.sub} centered={step === 'forgot'} />
 
       {step === 'login' ? (

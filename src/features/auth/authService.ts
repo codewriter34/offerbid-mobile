@@ -4,31 +4,10 @@ import {ENDPOINTS} from '@api/endpoints';
 import {AuthTokens, User, RegisterPayload, LoginPayload, VerifyOtpPayload} from '@shared/types';
 import {extractTokens} from '@api/normalize';
 import {mapUser} from '@api/mappers';
+import {getGoogleIdToken, signOutGoogle} from './googleAuth';
+import {firebaseIdTokenFromGoogle, signOutFirebase} from './firebaseAuth';
 
-export const GoogleSignInStatusCodes = {
-  SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
-  PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
-};
-
-function loadGoogleSignIn(): typeof import('@react-native-google-signin/google-signin') | null {
-  try {
-    return require('@react-native-google-signin/google-signin');
-  } catch {
-    return null;
-  }
-}
-
-export function configureGoogleSignIn(webClientId: string) {
-  try {
-    const google = loadGoogleSignIn();
-    google?.GoogleSignin.configure({
-      webClientId,
-      offlineAccess: true,
-    });
-  } catch {
-    // Native Google Sign-In is unavailable in Expo Go
-  }
-}
+export {GoogleSignInStatusCodes, configureGoogleSignIn} from './googleAuth';
 
 async function persistSession(data: unknown): Promise<{tokens: AuthTokens; user: User}> {
   const extracted = extractTokens(data);
@@ -89,25 +68,9 @@ export async function signInWithGoogle(): Promise<{
   tokens: AuthTokens;
   user: User;
 }> {
-  const google = loadGoogleSignIn();
-  if (!google) {
-    throw new Error(
-      'Google Sign-In needs a development build. Use email login in Expo Go.',
-    );
-  }
-
-  await google.GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
-  const signInResult = await google.GoogleSignin.signIn();
-
-  const idToken = signInResult.data?.idToken;
-  if (!idToken) {
-    throw new Error('Google Sign-In did not return an ID token');
-  }
-
-  const {data} = await apiClient.post(ENDPOINTS.AUTH.GOOGLE, {
-    id_token: idToken,
-  });
-
+  const googleIdToken = await getGoogleIdToken();
+  const idToken = await firebaseIdTokenFromGoogle(googleIdToken);
+  const {data} = await apiClient.post(ENDPOINTS.AUTH.GOOGLE, {idToken});
   return persistSession(data);
 }
 
@@ -139,10 +102,6 @@ export async function signOut(): Promise<void> {
   } catch {
     // ignore
   }
-  try {
-    loadGoogleSignIn()?.GoogleSignin.signOut();
-  } catch {
-    // Google sign out can fail if not signed in via Google
-  }
+  await Promise.all([signOutGoogle(), signOutFirebase()]);
   await clearTokens();
 }

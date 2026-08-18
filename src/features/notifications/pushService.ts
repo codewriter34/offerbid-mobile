@@ -1,13 +1,13 @@
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
-import {Platform} from 'react-native';
+import {NativeModules, Platform} from 'react-native';
 import apiClient from '@api/client';
 import {ENDPOINTS} from '@api/endpoints';
+import {IS_EXPO_GO} from '@shared/config/env';
 
 const CHANNEL_ID_BIDS = 'offerbid-bids';
 
 let lastFcmToken: string | null = null;
-let tokenRefreshUnsub: Notifications.EventSubscription | null = null;
+let tokenRefreshUnsub: (() => void) | null = null;
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -19,12 +19,29 @@ Notifications.setNotificationHandler({
   }),
 });
 
-function expoProjectId(): string | undefined {
+function isNativeFcmToken(token: string): boolean {
   return (
-    Constants.easConfig?.projectId ??
-    (Constants.expoConfig?.extra as {eas?: {projectId?: string}} | undefined)?.eas
-      ?.projectId
+    token.length > 0 &&
+    !token.startsWith('ExponentPushToken') &&
+    !/^[0-9a-f]{64}$/i.test(token)
   );
+}
+
+function hasNativeFirebase(): boolean {
+  if (IS_EXPO_GO) return false;
+  const modules = NativeModules as Record<string, unknown>;
+  return Boolean(modules.RNFBAppModule || modules.NativeRNFBTurboApp);
+}
+
+type MessagingSdk = typeof import('@react-native-firebase/messaging');
+
+function loadMessaging(): MessagingSdk | null {
+  if (!hasNativeFirebase()) return null;
+  try {
+    return require('@react-native-firebase/messaging') as MessagingSdk;
+  } catch {
+    return null;
+  }
 }
 
 export async function setupNotifications(): Promise<void> {
@@ -45,31 +62,52 @@ export async function setupNotifications(): Promise<void> {
 
 export async function requestPermission(): Promise<boolean> {
   const settings = await Notifications.requestPermissionsAsync();
-  return (
+  const granted =
     settings.granted ||
-    settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
-  );
+    settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+  if (!granted) return false;
+
+  const messagingSdk = loadMessaging();
+  if (messagingSdk && Platform.OS === 'ios') {
+    const status = await messagingSdk.requestPermission(messagingSdk.getMessaging());
+    return (
+      status === messagingSdk.AuthorizationStatus.AUTHORIZED ||
+      status === messagingSdk.AuthorizationStatus.PROVISIONAL
+    );
+  }
+  return true;
 }
 
 export async function getFCMToken(): Promise<string | null> {
-  try {
-    const device = await Notifications.getDevicePushTokenAsync();
-    lastFcmToken = typeof device.data === 'string' ? device.data : null;
-    if (lastFcmToken) return lastFcmToken;
-  } catch {
-    // Expo Go and some dev clients have no native FCM/APNs credentials
+  const messagingSdk = loadMessaging();
+  if (messagingSdk) {
+    try {
+      const messaging = messagingSdk.getMessaging();
+      await messagingSdk.registerDeviceForRemoteMessages(messaging);
+      const token = await messagingSdk.getToken(messaging);
+      if (token && isNativeFcmToken(token)) {
+        lastFcmToken = token;
+        return token;
+      }
+    } catch {
+      // Expo Go and missing native Firebase modules
+    }
   }
 
-  try {
-    const projectId = expoProjectId();
-    const expoToken = await Notifications.getExpoPushTokenAsync(
-      projectId ? {projectId} : {},
-    );
-    lastFcmToken = expoToken.data;
-    return lastFcmToken;
-  } catch {
-    return null;
+  if (Platform.OS === 'android') {
+    try {
+      const device = await Notifications.getDevicePushTokenAsync();
+      const token = typeof device.data === 'string' ? device.data : null;
+      if (token && isNativeFcmToken(token)) {
+        lastFcmToken = token;
+        return token;
+      }
+    } catch {
+      // No native FCM in Expo Go
+    }
   }
+
+  return null;
 }
 
 export function getCachedFcmToken(): string | null {
@@ -77,6 +115,7 @@ export function getCachedFcmToken(): string | null {
 }
 
 export async function registerFCMToken(token: string): Promise<void> {
+  if (!isNativeFcmToken(token)) return;
   lastFcmToken = token;
   await apiClient.post(ENDPOINTS.DEVICES, {
     token,
@@ -145,16 +184,36 @@ export function setupBackgroundHandler() {
 }
 
 export function onFCMTokenRefresh(callback: (token: string) => void) {
-  tokenRefreshUnsub?.remove();
-  tokenRefreshUnsub = Notifications.addPushTokenListener(token => {
+  tokenRefreshUnsub?.();
+  tokenRefreshUnsub = null;
+
+  const messagingSdk = loadMessaging();
+  if (messagingSdk) {
+    tokenRefreshUnsub = messagingSdk.onTokenRefresh(
+      messagingSdk.getMessaging(),
+      (next: string) => {
+        if (isNativeFcmToken(next)) {
+          lastFcmToken = next;
+          callback(next);
+        }
+      },
+    );
+    return () => {
+      tokenRefreshUnsub?.();
+      tokenRefreshUnsub = null;
+    };
+  }
+
+  const sub = Notifications.addPushTokenListener(token => {
     const value = typeof token.data === 'string' ? token.data : '';
-    if (value) {
+    if (Platform.OS === 'android' && isNativeFcmToken(value)) {
       lastFcmToken = value;
       callback(value);
     }
   });
+  tokenRefreshUnsub = () => sub.remove();
   return () => {
-    tokenRefreshUnsub?.remove();
+    tokenRefreshUnsub?.();
     tokenRefreshUnsub = null;
   };
 }

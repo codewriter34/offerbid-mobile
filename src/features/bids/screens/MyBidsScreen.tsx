@@ -132,6 +132,18 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
     });
   };
 
+  const openRecounter = (bid: Bid) => {
+    navigation.navigate('SubmitBid', {
+      listingId: bid.listingId,
+      listingTitle: bid.listingTitle ?? 'Listing',
+      minBid: bid.minBidPrice ?? 0,
+      startingPrice: bid.askingPrice ?? bid.amount,
+      recounter: true,
+      sellerCounterAmount: bid.counterAmount ?? bid.amount,
+      currentAmount: bid.amount,
+    });
+  };
+
   const chooseSort = () => {
     Alert.alert('Sort by', undefined, [
       {text: 'Most recent', onPress: () => setSort('recent')},
@@ -234,6 +246,7 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
               onManage={openManage}
               onAcceptCounter={handleAcceptCounter}
               onDeclineCounter={handleRejectCounter}
+              onRecounter={openRecounter}
               onWhatsApp={handleWhatsApp}
             />
           )}

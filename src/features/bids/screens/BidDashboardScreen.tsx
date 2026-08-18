@@ -1,5 +1,5 @@
 import React, {useEffect, useCallback, useMemo, useState} from 'react';
-import {View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, Image} from 'react-native';
+import {View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert} from 'react-native';
 import {MainTabScreenProps} from '@app/navigation/types';
 import {useBids} from '@features/bids/useBids';
 import {useMyListings} from '@features/listings/useMyListings';
@@ -18,6 +18,7 @@ import {FilterChip} from '@shared/ui/FilterChip';
 import {formatPrice} from '@shared/lib/formatters';
 import {shadows} from '@shared/theme/shadows';
 import {AppIcon} from '@shared/ui/AppIcon';
+import {CachedImage} from '@shared/ui/CachedImage';
 import {colors} from '@shared/theme/colors';
 import {Bid, Listing} from '@shared/types';
 
@@ -383,7 +384,14 @@ function ListingRow({
       className="mb-3 flex-row items-center rounded-2xl border border-slate-200 bg-white px-3 py-3"
       style={shadows.card}>
       {image ? (
-        <Image source={{uri: image}} className="h-14 w-14 rounded-xl bg-slate-100" />
+        <View className="h-14 w-14 overflow-hidden rounded-xl bg-slate-100">
+          <CachedImage
+            source={image}
+            className="h-full w-full"
+            contentFit="cover"
+            recyclingKey={listing.id}
+          />
+        </View>
       ) : (
         <View className="h-14 w-14 items-center justify-center rounded-xl bg-slate-100">
           <Text className="text-[10px] font-semibold text-brand-gray">No photo</Text>

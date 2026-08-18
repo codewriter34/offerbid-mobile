@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {MainTabScreenProps} from '@app/navigation/types';
 import {useFeed} from '@features/listings/useFeed';
+import {useRealtimeBids} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {useHubStore} from '@features/auth/hubStore';
 import {ListingCard} from '@features/listings/components/ListingCard';
@@ -42,9 +43,11 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
   const {unreadCount, fetchNotifications} = useNotifications();
   const [searchText, setSearchText] = useState('');
 
+  useRealtimeBids();
+
   useEffect(() => {
-    fetchListings(true);
-  }, [filters.category, filters.sortBy]);
+    void fetchListings(false);
+  }, [filters.category, filters.sortBy, fetchListings]);
 
   useEffect(() => {
     if (user) {
@@ -138,7 +141,7 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
 
           <View className="mb-2 px-4">
             <TextInput
-              className="rounded-lg bg-brand-white px-4 py-2.5 text-base text-brand-black"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-base text-brand-black"
               placeholder="Search listings..."
               placeholderTextColor="#64748B"
               value={searchText}

@@ -8,6 +8,7 @@ import {CountdownTimer} from '@shared/ui/CountdownTimer';
 interface BidCardProps {
   bid: Bid;
   isSeller: boolean;
+  isOwnBid?: boolean;
   onAccept?: (id: string) => void;
   onReject?: (id: string) => void;
   onCounter?: (id: string) => void;
@@ -27,6 +28,7 @@ const STATUS_CHIP: Record<string, {bg: string; fg: string; label: string}> = {
 export const BidCard: React.FC<BidCardProps> = ({
   bid,
   isSeller,
+  isOwnBid = false,
   onAccept,
   onReject,
   onCounter,
@@ -48,7 +50,7 @@ export const BidCard: React.FC<BidCardProps> = ({
       : 'Your offer';
 
   const showSellerActions = status === 'PENDING' && isSeller;
-  const showBuyerCounterActions = isCountered && !isSeller;
+  const showBuyerCounterActions = isCountered && !isSeller && isOwnBid;
   const showWhatsApp = status === 'ACCEPTED' && onWhatsApp;
   const hasActions = showSellerActions || showBuyerCounterActions || showWhatsApp;
 
@@ -132,10 +134,18 @@ export const BidCard: React.FC<BidCardProps> = ({
           {showBuyerCounterActions ? (
             <>
               <Button
-                title="Accept counter"
+                title="Accept"
                 variant="secondary"
                 size="sm"
                 onPress={() => onAccept?.(bid.id)}
+                disabled={disabled}
+                style={{flex: 1}}
+              />
+              <Button
+                title="Counter"
+                variant="outline"
+                size="sm"
+                onPress={() => onCounter?.(bid.id)}
                 disabled={disabled}
                 style={{flex: 1}}
               />

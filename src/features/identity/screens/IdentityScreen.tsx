@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import {pickOneImage} from '@shared/lib/imagePicker';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {useIdentity} from '@features/identity/useIdentity';
 import {uploadMedia} from '@shared/lib/uploads';
 import {IdKind} from '@shared/types';
 import {Button} from '@shared/ui/Button';
+import {SuccessBurstHost} from '@shared/ui/SuccessBurst';
+import {showSuccessBurst} from '@shared/ui/successBurstStore';
 import {LoadingSpinner} from '@shared/ui/LoadingSpinner';
 import {colors} from '@shared/theme/colors';
 import {typography} from '@shared/theme/typography';
@@ -66,9 +69,13 @@ export const IdentityScreen: React.FC<Props> = ({navigation}) => {
         idBackUrl,
         fullNameOnId: fullNameOnId.trim() || undefined,
       });
-      Alert.alert('Submitted', 'Your ID is pending review. Approval raises your listing cap to 10.', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      showSuccessBurst({
+        kind: 'check',
+        title: 'ID submitted',
+        message: 'Your ID is pending review. Approval raises your listing cap to 10.',
+        actionLabel: 'Done',
+        onAction: () => dismissScreen(navigation),
+      });
     } catch (err: any) {
       Alert.alert('Submit failed', err.message);
     } finally {
@@ -81,8 +88,9 @@ export const IdentityScreen: React.FC<Props> = ({navigation}) => {
   }
 
   return (
+    <View style={styles.container}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
+      <TouchableOpacity onPress={() => dismissScreen(navigation)}>
         <Text style={styles.back}>Cancel</Text>
       </TouchableOpacity>
       <Text style={styles.title}>Verify identity</Text>
@@ -140,6 +148,8 @@ export const IdentityScreen: React.FC<Props> = ({navigation}) => {
         </>
       )}
     </ScrollView>
+    <SuccessBurstHost />
+    </View>
   );
 };
 

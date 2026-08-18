@@ -103,3 +103,15 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength - 3) + '...';
 }
+
+export function formatListingPlace(listing: {
+  location?: string | null;
+  city?: string | null;
+}): string {
+  const neighborhood = listing.location?.trim() ?? '';
+  const city = listing.city?.trim() ?? '';
+  if (neighborhood && city) {
+    return `${neighborhood}, ${city}`;
+  }
+  return neighborhood || city;
+}

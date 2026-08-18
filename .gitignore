@@ -25,6 +25,10 @@ ios/build/
 .env.local
 .env.production
 
+# Firebase Admin private keys only — google-services.json is safe to commit
+*firebase-adminsdk*.json
+google-services(*).json
+
 # IDE
 .vscode/
 .idea/
