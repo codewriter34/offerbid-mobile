@@ -1,8 +1,9 @@
 import React from 'react';
-import {View, Text, Image, TouchableOpacity} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {Bid, BidStatus} from '@shared/types';
 import {expiryProgress, formatPrice, formatRelativeTime} from '@shared/lib/formatters';
 import {CountdownTimer} from '@shared/ui/CountdownTimer';
+import {CachedImage} from '@shared/ui/CachedImage';
 import {shadows} from '@shared/theme/shadows';
 
 const STATUS_CHIP: Record<string, {bg: string; fg: string; label: string}> = {
@@ -19,6 +20,7 @@ export function MyBidCard({
   onManage,
   onAcceptCounter,
   onDeclineCounter,
+  onRecounter,
   onWhatsApp,
 }: {
   bid: Bid;
@@ -26,6 +28,7 @@ export function MyBidCard({
   onManage: (bid: Bid) => void;
   onAcceptCounter?: (id: string) => void;
   onDeclineCounter?: (id: string) => void;
+  onRecounter?: (bid: Bid) => void;
   onWhatsApp?: (bid: Bid) => void;
 }) {
   const status = String(bid.status).toUpperCase() as BidStatus;
@@ -44,10 +47,14 @@ export function MyBidCard({
       style={[{borderLeftWidth: 4, borderLeftColor: chip.fg}, shadows.card]}>
       <View className="flex-row px-3.5 pb-3 pt-3.5">
         {bid.listingImageUrl ? (
-          <Image
-            source={{uri: bid.listingImageUrl}}
-            className="h-[72px] w-[72px] rounded-xl bg-slate-100"
-          />
+          <View className="h-[72px] w-[72px] overflow-hidden rounded-xl bg-slate-100">
+            <CachedImage
+              source={bid.listingImageUrl}
+              className="h-full w-full"
+              contentFit="cover"
+              recyclingKey={bid.id}
+            />
+          </View>
         ) : (
           <View className="h-[72px] w-[72px] items-center justify-center rounded-xl bg-slate-100">
             <Text className="text-xs font-semibold text-brand-gray">No photo</Text>
@@ -131,6 +138,11 @@ export function MyBidCard({
               onPress={() => onAcceptCounter?.(bid.id)}
               className="flex-1 items-center rounded-xl bg-brand-black py-2.5">
               <Text className="text-[13px] font-semibold text-white">Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onRecounter?.(bid)}
+              className="flex-1 items-center rounded-xl border border-brand-blue py-2.5">
+              <Text className="text-[13px] font-semibold text-brand-blue">Counter</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => onDeclineCounter?.(bid.id)}

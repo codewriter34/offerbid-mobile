@@ -15,6 +15,7 @@ import {
 import {configureCloudinary} from '@shared/lib/uploads/cloudinary';
 import {CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET} from '@shared/config/env';
 import {colors} from '@shared/theme/colors';
+import {SuccessBurstHost} from '@shared/ui/SuccessBurst';
 
 const AppContent: React.FC = () => {
   useAuth();
@@ -51,6 +52,7 @@ export const Root: React.FC = () => {
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" backgroundColor={colors.brand.white} />
       <AppContent />
+      <SuccessBurstHost />
     </SafeAreaProvider>
   );
 };

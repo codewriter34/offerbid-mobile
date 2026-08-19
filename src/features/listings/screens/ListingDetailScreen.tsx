@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  Image,
   Dimensions,
   TouchableOpacity,
   FlatList,
@@ -11,6 +10,7 @@ import {
   Share,
 } from 'react-native';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {useListing} from '@features/listings/useListing';
 import {useBids} from '@features/bids/useBids';
 import {useRealtimeBids} from '@features/bids/useRealtimeBids';
@@ -25,6 +25,7 @@ import {CategoryBadge} from '@shared/ui/CategoryBadge';
 import {SafetyBanner} from '@shared/ui/SafetyBanner';
 import {AppShell} from '@shared/ui/AppShell';
 import {AppIcon} from '@shared/ui/AppIcon';
+import {CachedImage} from '@shared/ui/CachedImage';
 import {shadows} from '@shared/theme/shadows';
 import {Bid, ListingStatus} from '@shared/types';
 
@@ -43,7 +44,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     updateListingStatus,
     reportListing,
   } = useListing();
-  const {listingBids, fetchListingBids, respondToBid, respondToCounter} = useBids();
+  const {listingBids, myBids, fetchListingBids, fetchMyBids, respondToBid, respondToCounter} = useBids();
   const user = useAuthStore(s => s.user);
   const selectedHub = useAuthStore(s => s.selectedHub);
   const [imageIndex, setImageIndex] = useState(0);
@@ -53,19 +54,42 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   useEffect(() => {
     fetchListingById(listingId);
     fetchListingBids(listingId);
-  }, [listingId]);
+    if (user) void fetchMyBids();
+  }, [listingId, user?.id]);
 
   const bids = listingBids[listingId] ?? [];
   const isSeller = currentListing?.sellerId === user?.id;
   const listingStatus = String(currentListing?.status ?? '').toUpperCase();
   const isActive = listingStatus === 'ACTIVE';
+  const ownBid =
+    user && !isSeller
+      ? myBids.find(bid => bid.listingId === listingId) ??
+        bids.find(bid => bid.buyerId === user.id)
+      : undefined;
+  const ownBidStatus = String(ownBid?.status ?? '').toUpperCase();
+
+  const resolveBid = (bidId: string) =>
+    bids.find(item => item.id === bidId) ??
+    myBids.find(item => item.id === bidId) ??
+    (ownBid?.id === bidId ? ownBid : undefined);
+
+  const openBuyerRecounter = (bid?: Bid) => {
+    const source = bid ?? ownBid;
+    if (!source || !currentListing) return;
+    navigation.navigate('SubmitBid', {
+      listingId: currentListing.id,
+      listingTitle: currentListing.title,
+      minBid: currentListing.minBidPrice,
+      startingPrice: currentListing.askingPrice,
+      recounter: true,
+      sellerCounterAmount: source.counterAmount ?? source.amount,
+      currentAmount: source.amount,
+    });
+  };
 
   const handleAccept = async (bidId: string) => {
-    const bid = bids.find(item => item.id === bidId);
-    const isBuyerCounter =
-      !isSeller && String(bid?.status).toUpperCase() === 'COUNTERED';
     try {
-      const updated = isBuyerCounter
+      const updated = !isSeller
         ? await respondToCounter(bidId, {action: 'ACCEPT'})
         : await respondToBid(bidId, {action: 'ACCEPT'});
       if (updated.whatsappUrl) {
@@ -77,22 +101,20 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   };
 
   const handleReject = async (bidId: string) => {
-    const bid = bids.find(item => item.id === bidId);
-    const isBuyerCounter =
-      !isSeller && String(bid?.status).toUpperCase() === 'COUNTERED';
+    const isBuyerAction = !isSeller;
     Alert.alert(
-      isBuyerCounter ? 'Decline counter' : 'Reject Bid',
-      isBuyerCounter
+      isBuyerAction ? 'Decline counter' : 'Reject Bid',
+      isBuyerAction
         ? 'Decline this counter offer?'
         : 'Are you sure you want to reject this bid?',
       [
         {text: 'Cancel', style: 'cancel'},
         {
-          text: isBuyerCounter ? 'Decline' : 'Reject',
+          text: isBuyerAction ? 'Decline' : 'Reject',
           style: 'destructive',
           onPress: async () => {
             try {
-              if (isBuyerCounter) {
+              if (isBuyerAction) {
                 await respondToCounter(bidId, {action: 'REJECT'});
               } else {
                 await respondToBid(bidId, {action: 'REJECT'});
@@ -107,11 +129,16 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   };
 
   const handleCounter = (bidId: string) => {
-    const bid = bids.find(item => item.id === bidId);
-    if (!bid || !currentListing) return;
+    const bid = resolveBid(bidId);
+    if (!currentListing) return;
+    if (!isSeller) {
+      openBuyerRecounter(bid);
+      return;
+    }
+    if (!bid) return;
     navigation.navigate('CounterBid', {
       bidId,
-      currentAmount: bid.amount,
+      currentAmount: bid.counterAmount ?? bid.amount,
       listingTitle: currentListing.title,
     });
   };
@@ -269,10 +296,12 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                 setImageIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));
               }}
               renderItem={({item}) => (
-                <Image
-                  source={{uri: item.url}}
+                <CachedImage
+                  source={item.url}
                   style={{width: SCREEN_WIDTH, height: IMAGE_HEIGHT}}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  recyclingKey={item.id}
+                  priority="high"
                 />
               )}
             />
@@ -286,7 +315,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
           <View className="absolute left-4 right-4 top-3 flex-row items-center justify-between">
             <TouchableOpacity
-              onPress={() => navigation.goBack()}
+              onPress={() => dismissScreen(navigation)}
               className="h-10 w-10 items-center justify-center rounded-full bg-black/50"
               accessibilityRole="button"
               accessibilityLabel="Go back">
@@ -345,9 +374,10 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
               </Text>
               <View className="mt-2 flex-row items-center">
                 {currentListing.seller.avatarUrl ? (
-                  <Image
-                    source={{uri: currentListing.seller.avatarUrl}}
+                  <CachedImage
+                    source={currentListing.seller.avatarUrl}
                     className="h-12 w-12 rounded-full"
+                    contentFit="cover"
                   />
                 ) : (
                   <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-black">
@@ -426,7 +456,82 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
             </View>
           ) : null}
 
-          {!isSeller && isActive ? (
+          {!isSeller && isActive && ownBid && ownBidStatus === 'COUNTERED' ? (
+            <View
+              className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white"
+              style={shadows.card}>
+              <View className="bg-[#DBEAFE] px-3.5 py-3">
+                <Text className="text-[15px] font-bold text-[#1D4ED8]">
+                  Seller countered
+                </Text>
+                <Text className="mt-0.5 text-[13px] leading-4 text-brand-charcoal">
+                  They want {formatPrice(ownBid.counterAmount ?? ownBid.amount, currentListing.currency)}.
+                  {ownBid.counterAmount != null
+                    ? ` Your offer was ${formatPrice(ownBid.amount, currentListing.currency)}.`
+                    : ''}
+                </Text>
+              </View>
+              <View className="flex-row gap-2 px-3.5 py-3">
+                <TouchableOpacity
+                  onPress={() => void handleAccept(ownBid.id)}
+                  className="flex-1 items-center rounded-xl bg-brand-black py-3">
+                  <Text className="text-[13px] font-semibold text-white">Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => openBuyerRecounter(ownBid)}
+                  className="flex-1 items-center rounded-xl bg-brand-blue py-3">
+                  <Text className="text-[13px] font-semibold text-white">Counter</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleReject(ownBid.id)}
+                  className="flex-1 items-center rounded-xl bg-brand-danger py-3">
+                  <Text className="text-[13px] font-semibold text-white">Decline</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+
+          {!isSeller && isActive && ownBid && ownBidStatus === 'PENDING' ? (
+            <View className="mt-4">
+              <View className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3">
+                <Text className="text-[15px] font-bold text-brand-black">
+                  Waiting for the seller
+                </Text>
+                <Text className="mt-0.5 text-[13px] leading-4 text-brand-charcoal">
+                  Your offer is {formatPrice(ownBid.amount, currentListing.currency)}.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('SubmitBid', {
+                    listingId: currentListing.id,
+                    listingTitle: currentListing.title,
+                    minBid: currentListing.minBidPrice,
+                    startingPrice: currentListing.askingPrice,
+                    bidId: ownBid.id,
+                    currentAmount: ownBid.amount,
+                  })
+                }
+                className="mt-2 items-center rounded-xl border border-brand-blue bg-white py-3">
+                <Text className="text-[14px] font-semibold text-brand-blue">
+                  Update offer
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {!isSeller && isActive && ownBidStatus === 'ACCEPTED' && ownBid ? (
+            <TouchableOpacity
+              onPress={() => void handleWhatsApp(ownBid)}
+              className="mt-4 items-center rounded-xl py-3.5"
+              style={{backgroundColor: '#25D366'}}>
+              <Text className="text-[15px] font-semibold text-white">
+                Chat on WhatsApp
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {!isSeller && isActive && (!ownBid || ['REJECTED', 'EXPIRED'].includes(ownBidStatus)) ? (
             <View className="mt-4">
               <TouchableOpacity
                 onPress={() => {
@@ -550,6 +655,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                 key={bid.id}
                 bid={bid}
                 isSeller={!!isSeller}
+                isOwnBid={bid.buyerId === user?.id}
                 onAccept={handleAccept}
                 onReject={handleReject}
                 onCounter={handleCounter}

@@ -49,5 +49,5 @@ export interface CompleteProfilePayload {
 }
 
 export interface GoogleAuthPayload {
-  id_token: string;
+  idToken: string;
 }

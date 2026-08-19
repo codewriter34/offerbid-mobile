@@ -1,3 +1,5 @@
+# Same as .gitignore, except Firebase client files are uploaded to EAS.
+
 # Dependencies
 node_modules/
 .pnp
@@ -25,12 +27,9 @@ ios/build/
 .env.local
 .env.production
 
-# Firebase — keep client files off GitHub; .easignore uploads them to EAS Build
+# Firebase admin keys stay off EAS
 *firebase-adminsdk*.json
-google-services.json
 google-services(*).json
-GoogleService-Info.plist
-
 
 # IDE
 .vscode/
@@ -52,9 +51,12 @@ coverage/
 
 # Expo
 .expo/
-dist/
 web-build/
 
 # Temporary
 tmp/
 temp/
+
+# Include gitignored Firebase client files in the EAS upload
+!google-services.json
+!GoogleService-Info.plist

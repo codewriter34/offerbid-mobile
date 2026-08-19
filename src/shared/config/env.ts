@@ -19,6 +19,16 @@ export const SOCKET_URL =
 export const GOOGLE_WEB_CLIENT_ID =
   extra.googleWebClientId ?? process.env.GOOGLE_WEB_CLIENT_ID ?? '';
 
+export const FIREBASE_WEB_CONFIG = {
+  apiKey: extra.firebaseApiKey ?? process.env.FIREBASE_API_KEY ?? '',
+  authDomain: `${extra.firebaseProjectId ?? 'offerbid-59cd9'}.firebaseapp.com`,
+  projectId: extra.firebaseProjectId ?? 'offerbid-59cd9',
+  storageBucket:
+    extra.firebaseStorageBucket ?? 'offerbid-59cd9.firebasestorage.app',
+  messagingSenderId: extra.firebaseMessagingSenderId ?? '888122949576',
+  appId: extra.firebaseAppId ?? '',
+};
+
 export const CLOUDINARY_CLOUD_NAME =
   extra.cloudinaryCloudName ?? process.env.CLOUDINARY_CLOUD_NAME ?? '';
 

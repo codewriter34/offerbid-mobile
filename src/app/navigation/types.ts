@@ -21,6 +21,8 @@ export type RootStackParamList = {
     startingPrice: number;
     bidId?: string;
     currentAmount?: number;
+    recounter?: boolean;
+    sellerCounterAmount?: number;
   };
   CounterBid: {bidId: string; currentAmount: number; listingTitle: string};
   Identity: undefined;

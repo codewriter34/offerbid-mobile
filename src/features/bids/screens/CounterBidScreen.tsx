@@ -12,10 +12,13 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {useBids} from '@features/bids/useBids';
 import {formatPrice} from '@shared/lib/formatters';
 import {AmountInput} from '@features/bids/components/AmountInput';
 import {Button} from '@shared/ui/Button';
+import {SuccessBurstHost} from '@shared/ui/SuccessBurst';
+import {showSuccessBurst} from '@shared/ui/successBurstStore';
 
 type Props = RootStackScreenProps<'CounterBid'>;
 
@@ -51,9 +54,13 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
     setSubmitting(true);
     try {
       await respondToBid(bidId, {action: 'COUNTER', counterAmount: numAmount});
-      Alert.alert('Counter Sent', 'Your counter offer has been sent.', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      showSuccessBurst({
+        kind: 'check',
+        title: 'Counter sent',
+        message: 'The buyer will see your new amount and can accept, decline, or counter back.',
+        actionLabel: 'Done',
+        onAction: () => dismissScreen(navigation),
+      });
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -67,7 +74,7 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
       <View
         className="flex-row items-center justify-between border-b border-slate-200 px-4 py-3"
         style={{paddingTop: insets.top + 10}}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity onPress={() => dismissScreen(navigation)} hitSlop={12}>
           <Text className="text-base font-semibold text-brand-danger">Cancel</Text>
         </TouchableOpacity>
         <Text className="text-lg font-bold text-brand-black">Counter Offer</Text>
@@ -116,6 +123,7 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
           />
         </View>
       </KeyboardAvoidingView>
+      <SuccessBurstHost />
     </View>
   );
 };

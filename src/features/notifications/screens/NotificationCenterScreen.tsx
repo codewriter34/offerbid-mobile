@@ -12,6 +12,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {useNotifications} from '@features/notifications/useNotifications';
 import {NotificationItem} from '@features/notifications/components/NotificationItem';
 import {EmptyState} from '@shared/ui/EmptyState';
@@ -85,7 +86,7 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
         useNativeDriver: true,
       }),
     ]).start(({finished}) => {
-      if (finished) navigation.goBack();
+      if (finished) dismissScreen(navigation);
       else closing.current = false;
     });
   };

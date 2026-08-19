@@ -33,7 +33,10 @@ export function mapUser(rawInput: unknown): User {
     location,
     avatarUrl: pickString(raw.avatarUrl, raw.avatar, raw.avatar_url, raw.url),
     profileComplete: Boolean(
-      raw.profileComplete ?? raw.profile_complete ?? (city && address && location),
+      raw.profileComplete ??
+        raw.isProfileComplete ??
+        raw.profile_complete ??
+        (city && address && location),
     ),
     isVerified: Boolean(raw.isVerified ?? raw.is_verified),
     googleId: pickString(raw.googleId, raw.google_id),
@@ -98,6 +101,27 @@ function mapListingSeller(rawInput: unknown): Listing['seller'] {
 export function mapListing(rawInput: unknown): Listing {
   const raw = asRecord(rawInput);
   const seller = mapListingSeller(raw.seller ?? raw.user);
+  const hub = asRecord(raw.hub);
+  const sellerRaw = asRecord(raw.seller ?? raw.user);
+  let location = pickString(
+    raw.neighborhood,
+    hub.neighborhood,
+    raw.location,
+  );
+  let city = pickString(
+    raw.city,
+    hub.city,
+    sellerRaw.city,
+    raw.cityName,
+    raw.town,
+  );
+  if (location && !city && location.includes(',')) {
+    const parts = location.split(',').map(part => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      location = parts[0];
+      city = parts.slice(1).join(', ');
+    }
+  }
   return {
     id: String(raw.id ?? ''),
     sellerId: String(raw.sellerId ?? raw.seller_id ?? raw.userId ?? seller?.id ?? ''),
@@ -109,8 +133,8 @@ export function mapListing(rawInput: unknown): Listing {
     minBidPrice: pickNumber(raw.minBidPrice, raw.min_bid, raw.minBid) ?? 0,
     currency: pickString(raw.currency) ?? 'XAF',
     status: mapListingStatus(raw.status),
-    location: pickString(raw.location, raw.neighborhood),
-    city: pickString(raw.city),
+    location,
+    city,
     images: mapImages(raw.images ?? raw.imageUrls ?? raw.photos ?? raw.media),
     highestBidAmount: pickNumber(
       raw.highestBidAmount,

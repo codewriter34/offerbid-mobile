@@ -3,6 +3,7 @@ import {Alert, Text, TouchableOpacity, View} from 'react-native';
 import {AuthStackScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
 import {finishAuth, showApiError, showGoogleError} from '@features/auth/authFlow';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {COUNTRY_OPTIONS} from '@shared/config/hubs';
 import {Country} from '@shared/types';
 import {
@@ -121,7 +122,7 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
   return (
     <AuthShell
       canClose={navigation.getParent()?.canGoBack() ?? navigation.canGoBack()}
-      onClose={() => navigation.getParent()?.goBack() ?? navigation.goBack()}>
+      onClose={() => dismissScreen(navigation)}>
       <AuthHeading
         title={step === 'form' ? 'Create account' : 'Check your email'}
         subtitle={

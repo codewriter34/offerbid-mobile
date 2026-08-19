@@ -16,12 +16,15 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {pickImagesFromLibrary} from '@shared/lib/imagePicker';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {CreateListingPayload} from '@shared/types/listing';
 import {useListing} from '@features/listings/useListing';
 import {useMyListings} from '@features/listings/useMyListings';
 import {useAuthStore} from '@features/auth/authStore';
 import {useHubStore} from '@features/auth/hubStore';
 import {uploadMediaMany} from '@shared/lib/uploads';
+import {showSuccessBurst} from '@shared/ui/successBurstStore';
+import {SuccessBurstHost} from '@shared/ui/SuccessBurst';
 import {
   MAX_LISTING_IMAGES,
   MAX_ACTIVE_LISTINGS_UNVERIFIED,
@@ -45,6 +48,7 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
   const priceFocused = useRef(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const user = useAuthStore(s => s.user);
+  const selectedHub = useAuthStore(s => s.selectedHub);
   const {createListing} = useListing();
   const {myListings} = useMyListings();
   const categories = useHubStore(s => s.categories);
@@ -157,20 +161,27 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
           : user?.country === 'NIGERIA'
             ? 'NGN'
             : 'XAF';
+      const neighborhood =
+        selectedHub?.neighborhood || user?.location || '';
+      const city = selectedHub?.city || user?.city || '';
       const payload: CreateListingPayload = {
         title: title.trim(),
         description: description.trim(),
         askingPrice: parseFloat(startingPrice),
         currency,
         category: category!,
-        location: user?.location || user?.city || 'Molyko',
+        location: [neighborhood, city].filter(Boolean).join(', ') || 'Molyko, Buea',
         images: uploadedUrls,
       };
 
       await createListing(payload);
-      Alert.alert('Success', 'Your listing has been posted!', [
-        {text: 'OK', onPress: () => navigation.goBack()},
-      ]);
+      showSuccessBurst({
+        kind: 'confetti',
+        title: 'Listing is live',
+        message: 'Buyers on Explore can see it now. We will notify you when an offer comes in.',
+        actionLabel: 'Done',
+        onAction: () => dismissScreen(navigation),
+      });
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -179,6 +190,7 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
   };
 
   return (
+    <View style={styles.container}>
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -197,7 +209,7 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => dismissScreen(navigation)}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Listing</Text>
@@ -316,6 +328,8 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
       />
       </ScrollView>
     </KeyboardAvoidingView>
+    <SuccessBurstHost />
+    </View>
   );
 };
 

@@ -1,7 +1,8 @@
 import React from 'react';
-import {View, Text, Image, TouchableOpacity} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {Bid, BidStatus} from '@shared/types';
 import {formatPrice, formatRelativeTime} from '@shared/lib/formatters';
+import {CachedImage} from '@shared/ui/CachedImage';
 import {shadows} from '@shared/theme/shadows';
 
 const STATUS_CHIP: Record<string, {bg: string; fg: string; label: string}> = {
@@ -43,10 +44,14 @@ export function IncomingOfferCard({
         activeOpacity={0.75}
         className="flex-row px-3.5 pb-3 pt-3.5">
         {bid.listingImageUrl ? (
-          <Image
-            source={{uri: bid.listingImageUrl}}
-            className="h-[72px] w-[72px] rounded-xl bg-slate-100"
-          />
+          <View className="h-[72px] w-[72px] overflow-hidden rounded-xl bg-slate-100">
+            <CachedImage
+              source={bid.listingImageUrl}
+              className="h-full w-full"
+              contentFit="cover"
+              recyclingKey={bid.id}
+            />
+          </View>
         ) : (
           <View className="h-[72px] w-[72px] items-center justify-center rounded-xl bg-slate-100">
             <Text className="text-xs font-semibold text-brand-gray">No photo</Text>

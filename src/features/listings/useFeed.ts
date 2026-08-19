@@ -1,67 +1,104 @@
-import {useCallback} from 'react';
+import {useCallback, useRef} from 'react';
 import {useListingStore} from './listingStore';
 import {fetchFeed, PAGE_SIZE} from './listingService';
+import {
+  FEED_CACHE_FRESH_MS,
+  feedCacheKey,
+  getCachedFeed,
+  persistFeedPage,
+} from '@shared/lib/feedStorage';
 
 export function useFeed() {
   const store = useListingStore();
+  const requestRef = useRef(0);
 
-  const buildParams = (page: number) => {
+  const buildParams = (page: number, filters: typeof store.filters) => {
     const params: Record<string, unknown> = {
       page,
       limit: PAGE_SIZE,
       status: 'ACTIVE',
     };
-    if (store.filters.category) params.category = store.filters.category;
-    const search = store.filters.search.trim();
+    if (filters.category) params.category = filters.category;
+    const search = filters.search.trim();
     if (search.length >= 2) params.q = search;
     return params;
   };
 
-  const fetchListings = useCallback(
-    async (refresh = false) => {
-      if (refresh) {
-        store.setRefreshing(true);
-        store.setPage(1);
-        store.setHasMore(true);
-      } else {
-        store.setLoading(true);
-      }
-      store.setError(null);
+  const fetchListings = useCallback(async (refresh = false) => {
+    const current = useListingStore.getState();
+    const filters = current.filters;
+    const key = feedCacheKey(filters);
+    const requestId = ++requestRef.current;
 
-      try {
-        const page = refresh ? 1 : store.page;
-        const items = await fetchFeed(buildParams(page));
-        if (refresh || page === 1) {
-          store.setListings(items);
-        } else {
-          store.appendListings(items);
+    if (!refresh) {
+      const cached = await getCachedFeed(key);
+      if (requestId !== requestRef.current) return;
+      if (cached) {
+        current.setListings(cached.listings);
+        current.setHasMore(cached.hasMore);
+        current.setPage(1);
+        current.setError(null);
+        if (Date.now() - cached.savedAt < FEED_CACHE_FRESH_MS) {
+          return;
         }
-        store.setHasMore(items.length === PAGE_SIZE);
-      } catch (err: any) {
-        store.setError(err.response?.data?.message ?? 'Failed to load listings');
-      } finally {
-        store.setLoading(false);
-        store.setRefreshing(false);
+      } else if (useListingStore.getState().feedKey !== key) {
+        current.setListings([]);
+        current.setHasMore(true);
+        current.setPage(1);
       }
-    },
-    [store.page, store.filters],
-  );
+    }
+
+    const hasData = useListingStore.getState().listings.length > 0;
+    if (refresh) {
+      current.setRefreshing(true);
+      current.setPage(1);
+      current.setHasMore(true);
+    } else if (!hasData) {
+      current.setLoading(true);
+    }
+    if (!hasData) current.setError(null);
+
+    try {
+      const items = await fetchFeed(buildParams(1, filters));
+      if (requestId !== requestRef.current) return;
+      if (feedCacheKey(useListingStore.getState().filters) !== key) return;
+      current.setListings(items);
+      current.setHasMore(items.length === PAGE_SIZE);
+      current.setPage(1);
+      current.setError(null);
+      persistFeedPage(filters, items, items.length === PAGE_SIZE);
+    } catch (err: any) {
+      if (requestId !== requestRef.current) return;
+      if (useListingStore.getState().listings.length === 0) {
+        current.setError(err.response?.data?.message ?? 'Failed to load listings');
+      }
+    } finally {
+      if (requestId === requestRef.current) {
+        current.setLoading(false);
+        current.setRefreshing(false);
+      }
+    }
+  }, []);
 
   const loadMore = useCallback(async () => {
-    if (store.isLoadingMore || !store.hasMore) return;
-    store.setLoadingMore(true);
-    const nextPage = store.page + 1;
-    store.setPage(nextPage);
+    const current = useListingStore.getState();
+    if (current.isLoadingMore || !current.hasMore) return;
+    current.setLoadingMore(true);
+    const nextPage = current.page + 1;
+    current.setPage(nextPage);
+    const filters = current.filters;
+    const key = feedCacheKey(filters);
     try {
-      const items = await fetchFeed(buildParams(nextPage));
-      store.appendListings(items);
-      store.setHasMore(items.length === PAGE_SIZE);
+      const items = await fetchFeed(buildParams(nextPage, filters));
+      if (feedCacheKey(useListingStore.getState().filters) !== key) return;
+      current.appendListings(items);
+      current.setHasMore(items.length === PAGE_SIZE);
     } catch (err: any) {
-      store.setError(err.response?.data?.message ?? 'Failed to load more');
+      current.setError(err.response?.data?.message ?? 'Failed to load more');
     } finally {
-      store.setLoadingMore(false);
+      current.setLoadingMore(false);
     }
-  }, [store.page, store.hasMore, store.isLoadingMore, store.filters]);
+  }, []);
 
   return {
     listings: store.listings,
