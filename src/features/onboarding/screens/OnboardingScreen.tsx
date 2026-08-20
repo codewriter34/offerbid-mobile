@@ -21,8 +21,8 @@ const SLIDES = [
   {
     id: 'discover',
     kicker: 'Explore',
-    title: 'Deals around campus',
-    body: 'Browse second-hand listings from students nearby — books, tech, and everyday finds.',
+    title: 'Pre-owned deals nearby',
+    body: 'Browse second-hand listings across Cameroon — phones, furniture, fashion, and everyday finds.',
     Art: DiscoverArt,
   },
   {

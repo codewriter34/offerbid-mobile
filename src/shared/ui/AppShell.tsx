@@ -29,7 +29,7 @@ export function AppShell({
           style={{backgroundColor: colors.ribbon.background}}>
           <Text className="text-center text-[11px] font-semibold leading-4 text-white">
             Always verify items before payment. Complete physical transactions in
-            highly public student areas (e.g., UB Gate).
+            busy public places such as markets or main roads.
           </Text>
         </View>
       ) : null}

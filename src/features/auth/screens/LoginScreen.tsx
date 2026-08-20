@@ -39,7 +39,7 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
   const emailError = useMemo(() => emailTypingHint(email), [email]);
   const heading =
     step === 'login'
-      ? {title: 'Welcome back', sub: 'Sign in to buy and sell second-hand finds near you.'}
+      ? {title: 'Welcome back', sub: 'Sign in to buy and sell pre-owned products near you.'}
       : step === 'forgot'
         ? {title: 'Forgot password', sub: 'We’ll email you a reset code.'}
         : {title: 'Set a new password', sub: 'Use the code from your email, then choose a new password.'};

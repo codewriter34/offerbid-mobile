@@ -128,7 +128,7 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
         title={step === 'form' ? 'Create account' : 'Check your email'}
         subtitle={
           step === 'form'
-            ? 'Join the second-hand marketplace. Bid, agree, and meet in person.'
+            ? 'Buy and sell pre-owned in Cameroon. Find great second-hand products or give your unused items a new home.'
             : `Enter the 6-digit code we sent to ${email || 'you'}.`
         }
       />
