@@ -85,7 +85,11 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
         updateUser({city, address: address.trim(), location, profileComplete: true});
       }
       setHub({country: selectedCountry ?? '', city, neighborhood: location});
-      navigation.replace('MainTabs', {screen: 'Explore'});
+      if (user.primaryIntent === 'SELL') {
+        navigation.replace('MainTabs', {screen: 'Selling'});
+      } else {
+        navigation.replace('MainTabs', {screen: 'Explore'});
+      }
     } catch (err: any) {
       Alert.alert(
         'Error',

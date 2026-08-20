@@ -28,6 +28,7 @@ export function mapUser(rawInput: unknown): User {
     phone: pickString(raw.phone),
     countryCode: pickString(raw.countryCode, raw.country_code),
     country: pickString(raw.country),
+    primaryIntent: pickString(raw.primaryIntent, raw.primary_intent),
     city,
     address,
     location,
