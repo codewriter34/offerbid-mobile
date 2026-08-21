@@ -23,7 +23,7 @@ import {showSuccessBurst} from '@shared/ui/successBurstStore';
 type Props = RootStackScreenProps<'CounterBid'>;
 
 export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
-  const {bidId, currentAmount, listingTitle} = route.params;
+  const {bidId, currentAmount, listingTitle, currency = 'XAF'} = route.params;
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const {respondToBid} = useBids();
@@ -75,7 +75,7 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
         className="flex-row items-center justify-between border-b border-slate-200 px-4 py-3"
         style={{paddingTop: insets.top + 10}}>
         <TouchableOpacity onPress={() => dismissScreen(navigation)} hitSlop={12}>
-          <Text className="text-base font-semibold text-brand-danger">Cancel</Text>
+          <Text className="text-base font-semibold text-brand-charcoal">Close</Text>
         </TouchableOpacity>
         <Text className="text-lg font-bold text-brand-black">Counter Offer</Text>
         <View className="w-14" />
@@ -94,7 +94,7 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
             {listingTitle}
           </Text>
           <Text className="mt-2 text-base text-brand-charcoal">
-            Current bid: {formatPrice(currentAmount)}
+            Current offer: {formatPrice(currentAmount, currency)}
           </Text>
 
           <Text className="mb-2 mt-6 text-sm font-semibold text-brand-black">
@@ -104,6 +104,7 @@ export const CounterBidScreen: React.FC<Props> = ({route, navigation}) => {
             value={amount}
             onChangeText={setAmount}
             placeholder="Enter amount"
+            currency={currency}
           />
         </ScrollView>
 

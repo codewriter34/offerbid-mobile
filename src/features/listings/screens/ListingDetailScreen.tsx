@@ -8,7 +8,14 @@ import {
   FlatList,
   Alert,
   Share,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Keyboard,
+  Platform,
+  Pressable,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RootStackScreenProps} from '@app/navigation/types';
 import {dismissScreen} from '@app/navigation/navigationRef';
 import {useListing} from '@features/listings/useListing';
@@ -17,7 +24,7 @@ import {useRealtimeBids} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {openDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
 import {listingImageUrls} from '@api/normalize';
-import {formatMemberSince, formatPrice, formatRelativeTime} from '@shared/lib/formatters';
+import {formatMemberSince, formatPlace, formatPrice, formatRelativeTime} from '@shared/lib/formatters';
 import {LoadingSpinner} from '@shared/ui/LoadingSpinner';
 import {ErrorView} from '@shared/ui/ErrorView';
 import {BidCard} from '@features/bids/components/BidCard';
@@ -25,7 +32,7 @@ import {CategoryBadge} from '@shared/ui/CategoryBadge';
 import {SafetyBanner} from '@shared/ui/SafetyBanner';
 import {AppShell} from '@shared/ui/AppShell';
 import {AppIcon} from '@shared/ui/AppIcon';
-import {CachedImage} from '@shared/ui/CachedImage';
+import {AvatarImage, MediaThumb} from '@shared/ui/CachedImage';
 import {shadows} from '@shared/theme/shadows';
 import {Bid, ListingStatus} from '@shared/types';
 
@@ -47,7 +54,12 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {listingBids, myBids, fetchListingBids, fetchMyBids, respondToBid, respondToCounter} = useBids();
   const user = useAuthStore(s => s.user);
   const selectedHub = useAuthStore(s => s.selectedHub);
+  const insets = useSafeAreaInsets();
   const [imageIndex, setImageIndex] = useState(0);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reporting, setReporting] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useRealtimeBids(listingId);
 
@@ -56,6 +68,23 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     fetchListingBids(listingId);
     if (user) void fetchMyBids();
   }, [listingId, user?.id]);
+
+  useEffect(() => {
+    if (!reportOpen) {
+      setKeyboardHeight(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, event => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [reportOpen]);
 
   const bids = listingBids[listingId] ?? [];
   const isSeller = currentListing?.sellerId === user?.id;
@@ -81,6 +110,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
       listingTitle: currentListing.title,
       minBid: currentListing.minBidPrice,
       startingPrice: currentListing.askingPrice,
+      currency: currentListing.currency,
       recounter: true,
       sellerCounterAmount: source.counterAmount ?? source.amount,
       currentAmount: source.amount,
@@ -140,6 +170,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
       bidId,
       currentAmount: bid.counterAmount ?? bid.amount,
       listingTitle: currentListing.title,
+      currency: currentListing.currency,
     });
   };
 
@@ -175,34 +206,17 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     }
   };
 
-  const shareMessage = currentListing
-    ? [
-        currentListing.title,
-        formatPrice(currentListing.askingPrice, currentListing.currency),
-        currentListing.description.trim(),
-        'Shared from OfferBid',
-      ]
-        .filter(Boolean)
-        .join('\n')
-    : '';
-
   const handleShare = async () => {
     if (!currentListing) return;
+    const publicId = currentListing.publicId || currentListing.id;
     try {
       await Share.share({
-        title: currentListing.title,
-        message: shareMessage,
+        title: 'OfferBid listing',
+        message: publicId,
       });
     } catch {
       // User dismissed the sheet
     }
-  };
-
-  const handleShareWhatsApp = async () => {
-    if (!shareMessage) return;
-    await openWhatsAppUrl(
-      `https://wa.me/?text=${encodeURIComponent(shareMessage)}`,
-    );
   };
 
   const changeStatus = async (status: ListingStatus) => {
@@ -215,49 +229,31 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   };
 
   const handleReport = () => {
-    Alert.prompt
-      ? Alert.prompt(
-          'Report listing',
-          'Why are you reporting this listing?',
-          async reason => {
-            if (!reason || reason.trim().length < 8) {
-              Alert.alert('Reason too short', 'Please write at least 8 characters.');
-              return;
-            }
-            try {
-              await reportListing(currentListing!.id, reason.trim());
-              Alert.alert('Reported', 'Thanks. Our team will review this.');
-            } catch (err: any) {
-              Alert.alert('Report failed', err.message);
-            }
-          },
-        )
-      : Alert.alert(
-          'Report listing',
-          'Send a short reason (min 8 characters) from the next prompt.',
-          [
-            {text: 'Cancel', style: 'cancel'},
-            {
-              text: 'Continue',
-              onPress: async () => {
-                try {
-                  await reportListing(
-                    currentListing!.id,
-                    'This listing looks suspicious or prohibited',
-                  );
-                  Alert.alert('Reported', 'Thanks. Our team will review this.');
-                } catch (err: any) {
-                  Alert.alert('Report failed', err.message);
-                }
-              },
-            },
-          ],
-        );
+    setReportReason('');
+    setReportOpen(true);
+  };
+
+  const submitReport = async () => {
+    if (!currentListing) return;
+    if (reportReason.trim().length < 8) {
+      Alert.alert('Reason too short', 'Please write at least 8 characters.');
+      return;
+    }
+    setReporting(true);
+    try {
+      await reportListing(currentListing.id, reportReason.trim());
+      setReportOpen(false);
+      Alert.alert('Reported', 'Thanks. Our team will review this.');
+    } catch (err: any) {
+      Alert.alert('Report failed', err.message);
+    } finally {
+      setReporting(false);
+    }
   };
 
   if (isLoading && !currentListing) {
     return (
-      <AppShell safetyRibbon>
+      <AppShell>
         <LoadingSpinner message="Loading listing..." />
       </AppShell>
     );
@@ -265,7 +261,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
   if (error && !currentListing) {
     return (
-      <AppShell safetyRibbon>
+      <AppShell>
         <ErrorView message={error} onRetry={() => fetchListingById(listingId)} />
       </AppShell>
     );
@@ -273,7 +269,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
   if (!currentListing) {
     return (
-      <AppShell safetyRibbon>
+      <AppShell>
         <ErrorView message="Listing not found" />
       </AppShell>
     );
@@ -282,7 +278,8 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const images = listingImageUrls(currentListing).map((url, i) => ({id: String(i), url}));
 
   return (
-    <AppShell safetyRibbon>
+    <AppShell>
+      <View className="flex-1">
       <ScrollView className="flex-1 bg-brand-white" showsVerticalScrollIndicator={false}>
         <View className="relative">
           {images.length > 0 ? (
@@ -296,12 +293,11 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                 setImageIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH));
               }}
               renderItem={({item}) => (
-                <CachedImage
-                  source={item.url}
-                  style={{width: SCREEN_WIDTH, height: IMAGE_HEIGHT}}
-                  contentFit="cover"
+                <MediaThumb
+                  uri={item.url}
                   recyclingKey={item.id}
-                  priority="high"
+                  style={{width: SCREEN_WIDTH, height: IMAGE_HEIGHT}}
+                  iconSize={36}
                 />
               )}
             />
@@ -373,19 +369,11 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                 Seller
               </Text>
               <View className="mt-2 flex-row items-center">
-                {currentListing.seller.avatarUrl ? (
-                  <CachedImage
-                    source={currentListing.seller.avatarUrl}
-                    className="h-12 w-12 rounded-full"
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View className="h-12 w-12 items-center justify-center rounded-full bg-brand-black">
-                    <Text className="text-lg font-bold text-white">
-                      {currentListing.seller.fullName.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+                <AvatarImage
+                  uri={currentListing.seller.avatarUrl}
+                  name={currentListing.seller.fullName}
+                  size={48}
+                />
                 <View className="ml-3 min-w-0 flex-1">
                   <Text className="text-[16px] font-semibold text-brand-black">
                     {currentListing.seller.fullName}
@@ -405,35 +393,6 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
             <Text className="mt-1.5 text-[14px] leading-5 text-brand-charcoal">
               {currentListing.description}
             </Text>
-          </View>
-
-          <View className="mt-4 rounded-2xl border border-slate-200 bg-white px-3.5 py-3">
-            <Text className="text-[15px] font-bold text-brand-black">Share this listing</Text>
-            <Text className="mt-0.5 text-[12px] text-brand-gray">
-              Tap an icon to send it to a friend.
-            </Text>
-            <View className="mt-3 flex-row gap-3">
-              <TouchableOpacity
-                onPress={handleShareWhatsApp}
-                className="flex-1 items-center rounded-xl bg-[#DCFCE7] py-3"
-                accessibilityRole="button"
-                accessibilityLabel="Share on WhatsApp">
-                <AppIcon name="whatsapp" size={22} color="#16A34A" />
-                <Text className="mt-1 text-[12px] font-semibold text-[#15803D]">
-                  WhatsApp
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleShare}
-                className="flex-1 items-center rounded-xl bg-[#DBEAFE] py-3"
-                accessibilityRole="button"
-                accessibilityLabel="Share to other apps">
-                <AppIcon name="share" size={22} color="#2070C8" />
-                <Text className="mt-1 text-[12px] font-semibold text-brand-blue">
-                  More
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           {!isSeller && listingStatus === 'SOLD' ? (
@@ -472,21 +431,9 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                 </Text>
               </View>
               <View className="flex-row gap-2 px-3.5 py-3">
-                <TouchableOpacity
-                  onPress={() => void handleAccept(ownBid.id)}
-                  className="flex-1 items-center rounded-xl bg-brand-black py-3">
-                  <Text className="text-[13px] font-semibold text-white">Accept</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => openBuyerRecounter(ownBid)}
-                  className="flex-1 items-center rounded-xl bg-brand-blue py-3">
-                  <Text className="text-[13px] font-semibold text-white">Counter</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleReject(ownBid.id)}
-                  className="flex-1 items-center rounded-xl bg-brand-danger py-3">
-                  <Text className="text-[13px] font-semibold text-white">Decline</Text>
-                </TouchableOpacity>
+                <Text className="text-[13px] leading-4 text-brand-gray">
+                  Accept, counter, or decline from the bar below.
+                </Text>
               </View>
             </View>
           ) : null}
@@ -501,62 +448,20 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   Your offer is {formatPrice(ownBid.amount, currentListing.currency)}.
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate('SubmitBid', {
-                    listingId: currentListing.id,
-                    listingTitle: currentListing.title,
-                    minBid: currentListing.minBidPrice,
-                    startingPrice: currentListing.askingPrice,
-                    bidId: ownBid.id,
-                    currentAmount: ownBid.amount,
-                  })
-                }
-                className="mt-2 items-center rounded-xl border border-brand-blue bg-white py-3">
-                <Text className="text-[14px] font-semibold text-brand-blue">
-                  Update offer
-                </Text>
-              </TouchableOpacity>
             </View>
           ) : null}
 
           {!isSeller && isActive && ownBidStatus === 'ACCEPTED' && ownBid ? (
-            <TouchableOpacity
-              onPress={() => void handleWhatsApp(ownBid)}
-              className="mt-4 items-center rounded-xl py-3.5"
-              style={{backgroundColor: '#25D366'}}>
-              <Text className="text-[15px] font-semibold text-white">
-                Chat on WhatsApp
+            <View className="mt-4 rounded-2xl bg-[#D1FAE5] px-3.5 py-3">
+              <Text className="text-[15px] font-bold text-[#047857]">Offer accepted</Text>
+              <Text className="mt-0.5 text-[13px] leading-4 text-brand-charcoal">
+                Chat with the seller on WhatsApp to arrange the meetup.
               </Text>
-            </TouchableOpacity>
+            </View>
           ) : null}
 
           {!isSeller && isActive && (!ownBid || ['REJECTED', 'EXPIRED'].includes(ownBidStatus)) ? (
-            <View className="mt-4">
-              <TouchableOpacity
-                onPress={() => {
-                  if (!user) {
-                    navigation.navigate('Auth');
-                    return;
-                  }
-                  navigation.navigate('SubmitBid', {
-                    listingId: currentListing.id,
-                    listingTitle: currentListing.title,
-                    minBid: currentListing.minBidPrice,
-                    startingPrice: currentListing.askingPrice,
-                  });
-                }}
-                className="items-center rounded-xl bg-brand-blue py-3.5">
-                <Text className="text-[15px] font-semibold text-white">Make an Offer</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleContactAsking}
-                className="mt-2 items-center rounded-xl border border-slate-200 bg-white py-3">
-                <Text className="text-[14px] font-semibold text-brand-black">
-                  Contact at asking price
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <View className="mt-4" />
           ) : null}
 
           {isSeller ? (
@@ -640,12 +545,15 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
           <View className="mt-3">
             <SafetyBanner
-              hubLocation={currentListing.location ?? selectedHub?.neighborhood}
+              hubLocation={formatPlace(
+                currentListing.location,
+                currentListing.city ?? selectedHub?.city,
+              ) || selectedHub?.neighborhood}
             />
           </View>
 
           <Text className="mb-2 mt-5 text-[17px] font-bold text-brand-black">
-            Bids ({bids.length})
+            Offers ({bids.length})
           </Text>
           {bids.length === 0 ? (
             <Text className="py-6 text-center text-sm text-brand-gray">No bids yet</Text>
@@ -665,6 +573,126 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
           )}
         </View>
       </ScrollView>
+      {!isSeller && isActive ? (
+        <View
+          className="border-t border-slate-200 bg-white px-4 pt-3"
+          style={{paddingBottom: Math.max(insets.bottom, 12)}}>
+          {ownBid && ownBidStatus === 'COUNTERED' ? (
+            <View className="gap-2">
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => void handleAccept(ownBid.id)}
+                  className="flex-1 items-center rounded-xl bg-brand-black py-3.5">
+                  <Text className="text-[15px] font-semibold text-white">Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => openBuyerRecounter(ownBid)}
+                  className="flex-1 items-center rounded-xl border border-brand-blue py-3.5">
+                  <Text className="text-[15px] font-semibold text-brand-blue">Counter</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity onPress={() => handleReject(ownBid.id)} className="items-center py-1">
+                <Text className="text-[14px] font-semibold text-brand-danger">Decline</Text>
+              </TouchableOpacity>
+            </View>
+          ) : ownBid && ownBidStatus === 'PENDING' ? (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('SubmitBid', {
+                  listingId: currentListing.id,
+                  listingTitle: currentListing.title,
+                  minBid: currentListing.minBidPrice,
+                  startingPrice: currentListing.askingPrice,
+                  currency: currentListing.currency,
+                  bidId: ownBid.id,
+                  currentAmount: ownBid.amount,
+                })
+              }
+              className="items-center rounded-xl border border-brand-blue bg-white py-3.5">
+              <Text className="text-[15px] font-semibold text-brand-blue">Update offer</Text>
+            </TouchableOpacity>
+          ) : ownBidStatus === 'ACCEPTED' && ownBid ? (
+            <TouchableOpacity
+              onPress={() => void handleWhatsApp(ownBid)}
+              className="items-center rounded-xl py-3.5"
+              style={{backgroundColor: '#25D366'}}>
+              <Text className="text-[15px] font-semibold text-white">Chat on WhatsApp</Text>
+            </TouchableOpacity>
+          ) : (
+            <View>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!user) {
+                    navigation.navigate('Auth');
+                    return;
+                  }
+                  navigation.navigate('SubmitBid', {
+                    listingId: currentListing.id,
+                    listingTitle: currentListing.title,
+                    minBid: currentListing.minBidPrice,
+                    startingPrice: currentListing.askingPrice,
+                    currency: currentListing.currency,
+                  });
+                }}
+                className="items-center rounded-xl bg-brand-blue py-3.5">
+                <Text className="text-[15px] font-semibold text-white">Make an Offer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleContactAsking}
+                className="mt-2 items-center rounded-xl border border-slate-200 bg-white py-3">
+                <Text className="text-[14px] font-semibold text-brand-black">
+                  Contact at asking price
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ) : null}
+      </View>
+      <Modal
+        visible={reportOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReportOpen(false)}>
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable className="flex-1 bg-black/40" onPress={() => setReportOpen(false)} />
+          <View
+            className="rounded-t-2xl bg-white px-4 pt-4"
+            style={{
+              paddingBottom:
+                Math.max(insets.bottom, 16) +
+                (Platform.OS === 'ios' ? 0 : keyboardHeight),
+            }}>
+            <Text className="text-[18px] font-bold text-brand-black">Report listing</Text>
+            <Text className="mt-1 text-[13px] text-brand-gray">
+              Tell us why this listing should be reviewed (at least 8 characters).
+            </Text>
+            <TextInput
+              className="mt-3 min-h-[96px] rounded-xl border border-slate-200 bg-brand-white px-3 py-3 text-base text-brand-black"
+              placeholder="Describe the issue"
+              placeholderTextColor="#64748B"
+              value={reportReason}
+              onChangeText={setReportReason}
+              multiline
+              textAlignVertical="top"
+              autoFocus
+            />
+            <TouchableOpacity
+              onPress={() => void submitReport()}
+              disabled={reporting}
+              className="mt-3 items-center rounded-xl bg-brand-danger py-3.5">
+              <Text className="text-[15px] font-semibold text-white">
+                {reporting ? 'Sending...' : 'Submit report'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setReportOpen(false)} className="mt-2 items-center py-2">
+              <Text className="text-[14px] font-semibold text-brand-charcoal">Close</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </AppShell>
   );
 };

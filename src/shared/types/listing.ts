@@ -18,6 +18,7 @@ export interface ListingSeller {
 
 export interface Listing {
   id: string;
+  publicId: string;
   sellerId: string;
   seller: ListingSeller | null;
   category: ListingCategory | string;
@@ -31,6 +32,7 @@ export interface Listing {
   city: string | null;
   images: ListingImage[];
   highestBidAmount: number | null;
+  offerCount: number | null;
   createdAt: string;
 }
 

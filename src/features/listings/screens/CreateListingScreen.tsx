@@ -33,7 +33,8 @@ import {
 import {
   isValidListingTitle,
   isValidListingDescription,
-  isValidPrice,
+    isValidPrice,
+    isValidMinBid,
 } from '@shared/lib/validators';
 import {Button} from '@shared/ui/Button';
 import {colors} from '@shared/theme/colors';
@@ -59,6 +60,7 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [startingPrice, setStartingPrice] = useState('');
+  const [minOffer, setMinOffer] = useState('');
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -130,6 +132,12 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
     const priceErr = isValidPrice(parseFloat(startingPrice));
     if (priceErr) newErrors.startingPrice = priceErr;
 
+    const minValue = minOffer.trim()
+      ? parseFloat(minOffer)
+      : Math.floor(parseFloat(startingPrice) * 0.5);
+    const minErr = isValidMinBid(minValue, parseFloat(startingPrice));
+    if (minErr) newErrors.minOffer = minErr;
+
     if (imageUris.length === 0) newErrors.images = 'Add at least one photo';
 
     setErrors(newErrors);
@@ -147,6 +155,19 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
 
     if (!validate()) return;
 
+    const neighborhood = (selectedHub?.neighborhood || user?.location || '')
+      .split(',')[0]
+      .trim();
+    const city = (selectedHub?.city || user?.city || '').split(',')[0].trim();
+    if (!neighborhood || !city) {
+      Alert.alert(
+        'Location required',
+        'Set your neighborhood before posting a listing.',
+        [{text: 'Set location', onPress: () => navigation.navigate('HubSelect')}],
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       let uploadedUrls: string[] = [];
@@ -161,16 +182,17 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
           : user?.country === 'NIGERIA'
             ? 'NGN'
             : 'XAF';
-      const neighborhood =
-        selectedHub?.neighborhood || user?.location || '';
-      const city = selectedHub?.city || user?.city || '';
+      const minBidPrice = minOffer.trim()
+        ? parseFloat(minOffer)
+        : Math.floor(parseFloat(startingPrice) * 0.5);
       const payload: CreateListingPayload = {
         title: title.trim(),
         description: description.trim(),
         askingPrice: parseFloat(startingPrice),
+        minBidPrice,
         currency,
         category: category!,
-        location: [neighborhood, city].filter(Boolean).join(', ') || 'Molyko, Buea',
+        location: neighborhood,
         images: uploadedUrls,
       };
 
@@ -210,7 +232,7 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
         automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => dismissScreen(navigation)}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={[styles.cancelText, {color: colors.text.secondary}]}>Close</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Listing</Text>
         <View style={{width: 50}} />
@@ -310,10 +332,31 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
         }}
         onBlur={() => {
           priceFocused.current = false;
+          const price = parseFloat(startingPrice);
+          if (!minOffer.trim() && Number.isFinite(price) && price > 0) {
+            setMinOffer(String(Math.floor(price * 0.5)));
+          }
         }}
       />
       {errors.startingPrice && (
         <Text style={styles.errorText}>{errors.startingPrice}</Text>
+      )}
+
+      <Text style={styles.label}>Minimum offer</Text>
+      <TextInput
+        style={[styles.input, errors.minOffer && styles.inputError]}
+        value={minOffer}
+        onChangeText={setMinOffer}
+        placeholder="Lowest offer you will consider"
+        placeholderTextColor={colors.text.light}
+        keyboardType="numeric"
+      />
+      {errors.minOffer ? (
+        <Text style={styles.errorText}>{errors.minOffer}</Text>
+      ) : (
+        <Text style={styles.helperText}>
+          Leave blank to default to half of the starting price.
+        </Text>
       )}
 
       <Button
@@ -372,6 +415,7 @@ const styles = StyleSheet.create({
   inputError: {borderColor: colors.error},
   textArea: {minHeight: 100},
   errorText: {...typography.caption, color: colors.error, marginTop: spacing.xs},
+  helperText: {...typography.caption, color: colors.text.light, marginTop: spacing.xs},
   imageRow: {flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm},
   imageThumb: {width: 80, height: 80, borderRadius: borderRadius.md, overflow: 'hidden'},
   thumbImage: {width: '100%', height: '100%'},

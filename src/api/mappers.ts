@@ -4,7 +4,7 @@ import {Bid, BidStatus} from '@shared/types/bid';
 import {AppNotification, NotificationType} from '@shared/types/notification';
 import {CountryHub, Hub, HubsResponse} from '@shared/types/hub';
 import {Identity, IdentityStatus} from '@shared/types/identity';
-import {extractList, extractWhatsAppUrl, listingImageUrl, pickNumber, pickString} from './normalize';
+import {extractList, extractWhatsAppUrl, extractImageUrl, extractImageUrls, listingImageUrl, pickNumber, pickString} from './normalize';
 
 type Raw = Record<string, any>;
 
@@ -54,27 +54,7 @@ function mapListingStatus(value: unknown): ListingStatus | string {
 }
 
 function mapImages(raw: unknown): ListingImage[] {
-  if (!Array.isArray(raw)) return [];
-  const images: ListingImage[] = [];
-  raw.forEach((item, index) => {
-    if (typeof item === 'string') {
-      images.push({id: String(index), url: item});
-      return;
-    }
-    const rec = asRecord(item);
-    const url = pickString(
-      rec.url,
-      rec.publicUrl,
-      rec.cloudinary_url,
-      rec.secure_url,
-      rec.src,
-      rec.uri,
-    );
-    if (url) {
-      images.push({id: pickString(rec.id) ?? String(index), url});
-    }
-  });
-  return images;
+  return extractImageUrls(raw).map((url, index) => ({id: String(index), url}));
 }
 
 function mapListingSeller(rawInput: unknown): Listing['seller'] {
@@ -115,7 +95,15 @@ export function mapListing(rawInput: unknown): Listing {
     raw.cityName,
     raw.town,
   );
-  if (location && !city && location.includes(',')) {
+  if (location && city) {
+    const locKey = location.toLowerCase();
+    const cityKey = city.toLowerCase();
+    if (locKey === cityKey) {
+      location = city;
+    } else if (locKey.endsWith(`, ${cityKey}`) || locKey.endsWith(`,${cityKey}`)) {
+      location = location.slice(0, locKey.lastIndexOf(cityKey)).replace(/,\s*$/, '').trim();
+    }
+  } else if (location && !city && location.includes(',')) {
     const parts = location.split(',').map(part => part.trim()).filter(Boolean);
     if (parts.length >= 2) {
       location = parts[0];
@@ -123,7 +111,8 @@ export function mapListing(rawInput: unknown): Listing {
     }
   }
   return {
-    id: String(raw.id ?? ''),
+    id: String(raw.id ?? raw.publicId ?? raw.public_id ?? ''),
+    publicId: pickString(raw.publicId, raw.public_id, raw.slug, raw.id) ?? String(raw.id ?? ''),
     sellerId: String(raw.sellerId ?? raw.seller_id ?? raw.userId ?? seller?.id ?? ''),
     seller,
     category: raw.category ?? 'Electronics',
@@ -135,12 +124,22 @@ export function mapListing(rawInput: unknown): Listing {
     status: mapListingStatus(raw.status),
     location,
     city,
-    images: mapImages(raw.images ?? raw.imageUrls ?? raw.photos ?? raw.media),
+    images: (() => {
+      const mapped = mapImages(raw.images ?? raw.imageUrls ?? raw.photos ?? raw.media);
+      return mapped.length > 0 ? mapped : mapImages(raw);
+    })(),
     highestBidAmount: pickNumber(
       raw.highestBidAmount,
       raw.highestActiveBid,
       asRecord(raw.highestBid).amount,
       asRecord(raw.highestActiveBid).offerAmount,
+    ),
+    offerCount: pickNumber(
+      raw.offerCount,
+      raw.bidCount,
+      raw.activeBidCount,
+      raw.bidsCount,
+      raw.offersCount,
     ),
     createdAt: pickString(raw.createdAt, raw.created_at) ?? new Date().toISOString(),
   };
@@ -153,6 +152,19 @@ function mapBidStatus(value: unknown): BidStatus | string {
 export function mapBid(rawInput: unknown, listingTitle?: string): Bid {
   const raw = asRecord(rawInput);
   const listing = asRecord(raw.listing);
+  const buyer = asRecord(raw.buyer ?? raw.user ?? raw.bidder);
+  const listingImageUrlValue =
+    listingImageUrl(listing) ??
+    listingImageUrl(raw) ??
+    extractImageUrl(
+      pickString(
+        raw.listingImageUrl,
+        raw.listing_image_url,
+        listing.imageUrl,
+        listing.image,
+        listing.coverUrl,
+      ),
+    );
   return {
     id: String(raw.id ?? ''),
     listingId: String(raw.listingId ?? raw.listing_id ?? listing.id ?? ''),
@@ -160,11 +172,21 @@ export function mapBid(rawInput: unknown, listingTitle?: string): Bid {
       listingTitle ??
       pickString(raw.listingTitle, listing.title) ??
       undefined,
-    listingImageUrl:
-      listingImageUrl(listing) ??
-      listingImageUrl(raw) ??
-      pickString(raw.listingImageUrl, listing.imageUrl, listing.image, listing.coverUrl),
+    listingImageUrl: listingImageUrlValue ?? null,
     listingCategory: pickString(listing.category, raw.listingCategory),
+    buyerName:
+      pickString(
+        raw.buyerName,
+        raw.buyer_name,
+        buyer.fullName,
+        buyer.display_name,
+        buyer.displayName,
+        buyer.name,
+      ) ?? null,
+    buyerAvatarUrl:
+      extractImageUrl(buyer) ??
+      pickString(raw.buyerAvatarUrl, raw.buyer_avatar_url, buyer.avatarUrl) ??
+      null,
     minBidPrice: pickNumber(listing.minBidPrice, listing.min_bid, listing.minBid),
     askingPrice: pickNumber(
       listing.askingPrice,

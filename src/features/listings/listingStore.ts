@@ -169,3 +169,14 @@ export const useListingStore = create<ListingState>(set => ({
       hasMore: true,
     }),
 }));
+
+export function findCachedListing(id: string): Listing | null {
+  if (!id) return null;
+  const state = useListingStore.getState();
+  if (state.currentListing?.id === id) return state.currentListing;
+  return (
+    state.listings.find(listing => listing.id === id) ??
+    state.myListings.find(listing => listing.id === id) ??
+    null
+  );
+}

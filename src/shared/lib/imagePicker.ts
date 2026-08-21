@@ -25,3 +25,18 @@ export async function pickOneImage(quality = 0.8): Promise<string | null> {
   const [uri] = await pickImagesFromLibrary({selectionLimit: 1, quality});
   return uri ?? null;
 }
+
+export async function pickFromCamera(quality = 0.8): Promise<string | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) {
+    return pickOneImage(quality);
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ['images'],
+    quality,
+    cameraType: ImagePicker.CameraType.front,
+  });
+  if (result.canceled) return null;
+  return result.assets[0]?.uri ?? null;
+}

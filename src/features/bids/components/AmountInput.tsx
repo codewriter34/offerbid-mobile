@@ -1,5 +1,6 @@
 import React from 'react';
 import {View, Text, TextInput} from 'react-native';
+import {currencyLabel} from '@shared/lib/formatters';
 
 export function AmountInput({
   value,
@@ -8,6 +9,7 @@ export function AmountInput({
   placeholder = '0',
   autoFocus,
   onFocus,
+  currency = 'XAF',
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -15,6 +17,7 @@ export function AmountInput({
   placeholder?: string;
   autoFocus?: boolean;
   onFocus?: () => void;
+  currency?: string;
 }) {
   return (
     <View
@@ -38,7 +41,9 @@ export function AmountInput({
           textAlignVertical: 'center',
         }}
       />
-      <Text className="ml-2 text-sm font-semibold text-brand-gray">FCFA</Text>
+      <Text className="ml-2 text-sm font-semibold text-brand-gray">
+        {currencyLabel(currency)}
+      </Text>
     </View>
   );
 }

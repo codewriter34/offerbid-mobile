@@ -37,8 +37,17 @@ export function showGoogleError(error: any) {
     );
     return;
   }
+  const apiCode = error?.response?.data?.code;
+  const apiMessage = error?.response?.data?.message;
+  if (apiCode === 'FIREBASE_NOT_CONFIGURED') {
+    Alert.alert(
+      'Google Sign-In unavailable',
+      apiMessage ?? 'Google Sign-In is not configured on this server.',
+    );
+    return;
+  }
   Alert.alert(
     'Sign In Failed',
-    error?.message ?? 'Google sign-in failed. Try again or use email.',
+    apiMessage ?? error?.message ?? 'Google sign-in failed. Try again or use email.',
   );
 }

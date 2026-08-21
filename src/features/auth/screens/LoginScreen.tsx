@@ -7,7 +7,6 @@ import {dismissScreen} from '@app/navigation/navigationRef';
 import {emailTypingHint, isStrongPassword} from '@shared/lib/validators';
 import {
   AuthButton,
-  AuthCheckbox,
   AuthField,
   AuthFooterLink,
   AuthHeading,
@@ -34,7 +33,6 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [staySignedIn, setStaySignedIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   const emailError = useMemo(() => emailTypingHint(email), [email]);
@@ -165,14 +163,7 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
       ) : null}
 
       {step === 'login' ? (
-        <View className="mb-5 mt-1 flex-row items-center justify-between">
-          <View className="flex-1 pr-3">
-            <AuthCheckbox
-              checked={staySignedIn}
-              label="Remember this device"
-              onToggle={() => setStaySignedIn(v => !v)}
-            />
-          </View>
+        <View className="mb-5 mt-1 items-end">
           <TouchableOpacity onPress={() => setStep('forgot')}>
             <Text className="text-sm font-bold text-brand-blue">Forgot password?</Text>
           </TouchableOpacity>
