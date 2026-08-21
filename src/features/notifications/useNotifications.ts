@@ -36,6 +36,15 @@ export function useNotifications() {
     }
   }, []);
 
+  const deleteNotification = useCallback(async (id: string) => {
+    store.removeNotification(id);
+    try {
+      await notificationService.deleteNotification(id);
+    } catch {
+      // Already removed optimistically; silent fail for 404
+    }
+  }, []);
+
   return {
     notifications: store.notifications,
     unreadCount: store.unreadCount,
@@ -44,5 +53,6 @@ export function useNotifications() {
     fetchNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
   };
 }

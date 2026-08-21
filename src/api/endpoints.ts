@@ -22,6 +22,7 @@ export const ENDPOINTS = {
     ME: '/users/me',
     COMPLETE_PROFILE: '/users/complete-profile',
     AVATAR: '/users/me/avatar',
+    PUBLIC_PROFILE: (id: string) => `/users/${id}/profile`,
   },
   HUBS: {
     LIST: '/hubs',
@@ -40,6 +41,8 @@ export const ENDPOINTS = {
     MY_LISTINGS: '/listings/mine',
     CONTACT: (id: string) => `/listings/${id}/contact`,
     STATUS: (id: string) => `/listings/${id}/status`,
+    VIEW: (id: string) => `/listings/${id}/view`,
+    SIMILAR: (id: string) => `/listings/${id}/similar`,
   },
   SEARCH: '/search',
   BIDS: {
@@ -54,6 +57,7 @@ export const ENDPOINTS = {
     LIST: '/notifications',
     MARK_READ: (id: string) => `/notifications/${id}/read`,
     READ_ALL: '/notifications/read-all',
+    DELETE: (id: string) => `/notifications/${id}`,
   },
   REPORTS: '/reports',
 } as const;

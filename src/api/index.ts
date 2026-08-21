@@ -2,6 +2,7 @@ export {default as apiClient} from './client';
 export {API_CONFIG, ENDPOINTS} from './endpoints';
 export {
   mapUser,
+  mapPublicProfile,
   mapListing,
   mapListings,
   mapBid,

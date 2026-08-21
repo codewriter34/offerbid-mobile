@@ -17,3 +17,7 @@ export async function markNotificationRead(id: string) {
 export async function markAllNotificationsRead() {
   await apiClient.patch(ENDPOINTS.NOTIFICATIONS.READ_ALL);
 }
+
+export async function deleteNotification(id: string) {
+  await apiClient.delete(ENDPOINTS.NOTIFICATIONS.DELETE(id));
+}

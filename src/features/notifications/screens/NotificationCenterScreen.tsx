@@ -37,6 +37,7 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
     fetchNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
   } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
   const slide = useRef(new Animated.Value(-PANEL_MAX)).current;
@@ -88,6 +89,17 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
       if (finished) navigation.goBack();
       else closing.current = false;
     });
+  };
+
+  const handleDeleteNotification = (notification: AppNotification) => {
+    Alert.alert('Delete notification', 'Remove this notification?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => void deleteNotification(notification.id),
+      },
+    ]);
   };
 
   const handleNotificationPress = (notification: AppNotification) => {
@@ -168,6 +180,7 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
               <NotificationItem
                 notification={item}
                 onPress={handleNotificationPress}
+                onLongPress={handleDeleteNotification}
               />
             )}
             ListEmptyComponent={

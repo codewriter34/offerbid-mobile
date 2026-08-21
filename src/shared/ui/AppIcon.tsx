@@ -21,7 +21,9 @@ export type AppIconName =
   | 'store'
   | 'back'
   | 'share'
-  | 'whatsapp';
+  | 'whatsapp'
+  | 'edit'
+  | 'phone';
 
 export function AppIcon({
   name,
@@ -246,6 +248,29 @@ export function AppIcon({
           />
           <Path
             d="M9.2 9.6c.2-.5.4-.5.7-.5h.6c.2 0 .4.1.5.4l.8 1.8c.1.2 0 .5-.2.6l-.5.4c-.2.2-.2.4 0 .6.4.5 1 .9 1.6 1.2.3.1.5.1.6-.1l.5-.6c.2-.2.5-.2.7-.1l1.7.8c.3.1.4.3.4.6v.5c0 .3-.1.5-.5.7-1 .5-2.4.4-4.1-.8-1.5-1.1-2.4-2.6-2.6-4.1-.1-.5 0-1 .2-1.4Z"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinejoin="round"
+          />
+        </Svg>
+      );
+    case 'edit':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M15.2 4.8l4 4-10.4 10.4H4.8v-4L15.2 4.8Z"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinejoin="round"
+          />
+          <Path d="M13 7l4 4" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
+        </Svg>
+      );
+    case 'phone':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M6.6 4.5h3.2l1.5 4.2-2.2 1.5a11.2 11.2 0 0 0 5.1 5l1.5-2.2 4.2 1.5v3.2a1.6 1.6 0 0 1-1.6 1.5C10.8 19 5 13.2 4.8 6.1A1.6 1.6 0 0 1 6.6 4.5Z"
             stroke={color}
             strokeWidth={stroke}
             strokeLinejoin="round"

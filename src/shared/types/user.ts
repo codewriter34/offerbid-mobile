@@ -51,3 +51,23 @@ export interface CompleteProfilePayload {
 export interface GoogleAuthPayload {
   id_token: string;
 }
+
+export interface UpdateProfilePayload {
+  fullName?: string;
+  city?: string;
+  location?: string;
+  address?: string;
+  primaryIntent?: string;
+  phone?: string;
+}
+
+export interface PublicProfile {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  isVerified: boolean;
+  city: string | null;
+  location: string | null;
+  activeListingCount: number;
+  createdAt: string | null;
+}

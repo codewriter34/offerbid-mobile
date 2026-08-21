@@ -1,4 +1,4 @@
-import {User} from '@shared/types/user';
+import {User, PublicProfile} from '@shared/types/user';
 import {Listing, ListingImage, ListingStatus} from '@shared/types/listing';
 import {Bid, BidStatus} from '@shared/types/bid';
 import {AppNotification, NotificationType} from '@shared/types/notification';
@@ -37,6 +37,22 @@ export function mapUser(rawInput: unknown): User {
     ),
     isVerified: Boolean(raw.isVerified ?? raw.is_verified),
     googleId: pickString(raw.googleId, raw.google_id),
+    createdAt: pickString(raw.createdAt, raw.created_at),
+  };
+}
+
+export function mapPublicProfile(rawInput: unknown): PublicProfile {
+  const raw = asRecord(rawInput);
+  return {
+    id: String(raw.id ?? ''),
+    fullName:
+      pickString(raw.fullName, raw.display_name, raw.displayName, raw.name) ??
+      'User',
+    avatarUrl: pickString(raw.avatarUrl, raw.avatar, raw.avatar_url),
+    isVerified: Boolean(raw.isVerified ?? raw.is_verified),
+    city: pickString(raw.city),
+    location: pickString(raw.location),
+    activeListingCount: pickNumber(raw.activeListingCount, raw.active_listing_count) ?? 0,
     createdAt: pickString(raw.createdAt, raw.created_at),
   };
 }
@@ -118,6 +134,7 @@ export function mapListing(rawInput: unknown): Listing {
       asRecord(raw.highestBid).amount,
       asRecord(raw.highestActiveBid).offerAmount,
     ),
+    viewCount: pickNumber(raw.viewCount, raw.view_count, raw.views) ?? 0,
     createdAt: pickString(raw.createdAt, raw.created_at) ?? new Date().toISOString(),
   };
 }

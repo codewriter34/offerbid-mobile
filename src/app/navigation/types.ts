@@ -23,6 +23,8 @@ export type RootStackParamList = {
     currentAmount?: number;
   };
   CounterBid: {bidId: string; currentAmount: number; listingTitle: string};
+  EditListing: {listingId: string};
+  SellerProfile: {userId: string};
   Identity: undefined;
   Notifications: undefined;
 };

@@ -2,7 +2,7 @@ import apiClient from '@api/client';
 import {ENDPOINTS} from '@api/endpoints';
 import {mapListing, mapListings} from '@api/mappers';
 import {extractWhatsAppUrl} from '@api/normalize';
-import {CreateListingPayload, ListingStatus} from '@shared/types';
+import {CreateListingPayload, UpdateListingPayload, ListingStatus} from '@shared/types';
 
 export const PAGE_SIZE = 20;
 
@@ -38,6 +38,24 @@ export async function contactSeller(id: string) {
   const url = extractWhatsAppUrl(data);
   if (!url) throw new Error('No WhatsApp link returned');
   return url;
+}
+
+export async function updateListing(id: string, payload: UpdateListingPayload) {
+  const {data} = await apiClient.patch(ENDPOINTS.LISTINGS.DETAIL(id), payload);
+  return mapListing(data);
+}
+
+export async function deleteListing(id: string) {
+  await apiClient.delete(ENDPOINTS.LISTINGS.DETAIL(id));
+}
+
+export async function incrementViewCount(id: string) {
+  await apiClient.post(ENDPOINTS.LISTINGS.VIEW(id));
+}
+
+export async function fetchSimilarListings(id: string) {
+  const {data} = await apiClient.get(ENDPOINTS.LISTINGS.SIMILAR(id));
+  return mapListings(data);
 }
 
 export async function reportListing(listingId: string, reason: string) {

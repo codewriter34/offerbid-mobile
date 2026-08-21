@@ -13,7 +13,8 @@ import {
 } from '@shared/config/hubs';
 import {useIdentity} from '@features/identity/useIdentity';
 import {uploadMedia} from '@shared/lib/uploads';
-import {updateAvatar} from '@features/profile/profileService';
+import {updateAvatar, updateProfile} from '@features/profile/profileService';
+import {UpdateProfilePayload} from '@shared/types';
 import {pickOneImage} from '@shared/lib/imagePicker';
 import {formatMemberSince} from '@shared/lib/formatters';
 import {AppShell} from '@shared/ui/AppShell';
@@ -65,6 +66,52 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
     } catch (err: any) {
       Alert.alert('Avatar failed', err?.response?.data?.message ?? err.message);
     }
+  };
+
+  const handleEditName = () => {
+    Alert.prompt
+      ? Alert.prompt(
+          'Edit name',
+          'Enter your display name',
+          async (name: string) => {
+            if (!name || name.trim().length < 2) {
+              Alert.alert('Invalid', 'Name must be at least 2 characters.');
+              return;
+            }
+            try {
+              const updated = await updateProfile({fullName: name.trim()});
+              updateUser({fullName: updated.fullName});
+            } catch (err: any) {
+              Alert.alert('Update failed', err?.response?.data?.message ?? err.message);
+            }
+          },
+          'plain-text',
+          user?.fullName ?? '',
+        )
+      : Alert.alert('Edit name', 'Use the Settings screen to update your name.');
+  };
+
+  const handleEditPhone = () => {
+    Alert.prompt
+      ? Alert.prompt(
+          'Edit phone',
+          'Enter your phone number',
+          async (phone: string) => {
+            if (!phone || phone.trim().length < 8) {
+              Alert.alert('Invalid', 'Enter a valid phone number.');
+              return;
+            }
+            try {
+              const updated = await updateProfile({phone: phone.trim()});
+              updateUser({phone: updated.phone});
+            } catch (err: any) {
+              Alert.alert('Update failed', err?.response?.data?.message ?? err.message);
+            }
+          },
+          'plain-text',
+          user?.phone ?? '',
+        )
+      : Alert.alert('Edit phone', 'Use the Settings screen to update your phone.');
   };
 
   const handleSignOut = () => {
@@ -243,6 +290,22 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
           </View>
 
           <View className="mb-8 mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <MenuRow
+              icon="edit"
+              iconBg="#EDE9FE"
+              iconColor="#7C3AED"
+              title="Edit name"
+              subtitle="Update your display name"
+              onPress={handleEditName}
+            />
+            <MenuRow
+              icon="phone"
+              iconBg="#FEE2E2"
+              iconColor="#DC2626"
+              title="Edit phone"
+              subtitle="Update your phone number"
+              onPress={handleEditPhone}
+            />
             <MenuRow
               icon="bell"
               iconBg="#DBEAFE"

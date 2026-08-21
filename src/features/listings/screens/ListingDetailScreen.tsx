@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import {RootStackScreenProps} from '@app/navigation/types';
 import {useListing} from '@features/listings/useListing';
+import {ListingCard} from '@features/listings/components/ListingCard';
 import {useBids} from '@features/bids/useBids';
 import {useRealtimeBids} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
@@ -36,11 +37,16 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const {listingId} = route.params;
   const {
     currentListing,
+    similarListings,
     isLoading,
     error,
     fetchListingById,
     contactSeller,
     updateListingStatus,
+    updateListing: updateListingHook,
+    deleteListing: deleteListingHook,
+    incrementViewCount,
+    fetchSimilarListings,
     reportListing,
   } = useListing();
   const {listingBids, fetchListingBids, respondToBid, respondToCounter} = useBids();
@@ -53,6 +59,8 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   useEffect(() => {
     fetchListingById(listingId);
     fetchListingBids(listingId);
+    incrementViewCount(listingId);
+    fetchSimilarListings(listingId);
   }, [listingId]);
 
   const bids = listingBids[listingId] ?? [];
@@ -185,6 +193,40 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     } catch (err: any) {
       Alert.alert('Update failed', err?.response?.data?.message ?? err.message);
     }
+  };
+
+  const handleEdit = () => {
+    if (!currentListing) return;
+    navigation.navigate('EditListing', {listingId: currentListing.id});
+  };
+
+  const handleDelete = () => {
+    if (!currentListing) return;
+    Alert.alert(
+      'Delete listing',
+      'Are you sure? This cannot be undone. All pending bids will be cancelled.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteListingHook(currentListing.id);
+              navigation.goBack();
+            } catch (err: any) {
+              const msg = err?.response?.data?.message ?? err.message;
+              Alert.alert('Delete failed', msg);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSellerTap = () => {
+    if (!currentListing?.seller?.id || isSeller) return;
+    navigation.navigate('SellerProfile', {userId: currentListing.seller.id});
   };
 
   const handleReport = () => {
@@ -332,12 +374,22 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
               {formatPrice(currentListing.highestBidAmount, currentListing.currency)}
             </Text>
           ) : null}
-          <Text className="mt-1 text-xs text-brand-gray">
-            Posted {formatRelativeTime(currentListing.createdAt)}
-          </Text>
+          <View className="mt-1 flex-row items-center gap-3">
+            <Text className="text-xs text-brand-gray">
+              Posted {formatRelativeTime(currentListing.createdAt)}
+            </Text>
+            {currentListing.viewCount > 0 ? (
+              <Text className="text-xs text-brand-gray">
+                {currentListing.viewCount} {currentListing.viewCount === 1 ? 'view' : 'views'}
+              </Text>
+            ) : null}
+          </View>
 
           {currentListing.seller ? (
-            <View
+            <TouchableOpacity
+              onPress={handleSellerTap}
+              disabled={isSeller}
+              activeOpacity={isSeller ? 1 : 0.7}
               className="mt-4 rounded-2xl border border-slate-200 bg-white px-3.5 py-3"
               style={shadows.card}>
               <Text className="text-[11px] font-semibold uppercase tracking-wide text-brand-gray">
@@ -367,7 +419,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   ) : null}
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           ) : null}
 
           <View className="mt-4 rounded-2xl border border-slate-200 bg-white px-3.5 py-3">
@@ -522,6 +574,24 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                   </TouchableOpacity>
                 )}
               </View>
+              <View className="flex-row gap-2 border-t border-slate-100 px-4 py-3">
+                {isActive ? (
+                  <TouchableOpacity
+                    onPress={handleEdit}
+                    className="flex-1 items-center rounded-xl bg-brand-blue py-2.5">
+                    <Text className="text-[13px] font-semibold text-white">
+                      Edit
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity
+                  onPress={handleDelete}
+                  className="flex-1 items-center rounded-xl bg-[#FEE2E2] py-2.5">
+                  <Text className="text-[13px] font-semibold text-[#DC2626]">
+                    Delete
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
 
@@ -557,6 +627,28 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
               />
             ))
           )}
+
+          {similarListings.length > 0 ? (
+            <>
+              <Text className="mb-2 mt-5 text-[17px] font-bold text-brand-black">
+                Similar listings
+              </Text>
+              <FlatList
+                data={similarListings}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={item => item.id}
+                renderItem={({item}) => (
+                  <TouchableOpacity
+                    onPress={() => navigation.push('ListingDetail', {listingId: item.id})}
+                    activeOpacity={0.8}
+                    style={{width: SCREEN_WIDTH * 0.6, marginRight: 12}}>
+                    <ListingCard listing={item} />
+                  </TouchableOpacity>
+                )}
+              />
+            </>
+          ) : null}
         </View>
       </ScrollView>
     </AppShell>

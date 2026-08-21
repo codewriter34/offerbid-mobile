@@ -22,11 +22,13 @@ const TYPE_ICON: Record<string, AppIconName> = {
 interface NotificationItemProps {
   notification: AppNotification;
   onPress: (notification: AppNotification) => void;
+  onLongPress?: (notification: AppNotification) => void;
 }
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onPress,
+  onLongPress,
 }) => {
   const unread = !notification.read;
   const accent = notificationAccent(notification.type);
@@ -35,6 +37,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
   return (
     <TouchableOpacity
       onPress={() => onPress(notification)}
+      onLongPress={onLongPress ? () => onLongPress(notification) : undefined}
       activeOpacity={0.75}
       className={`flex-row items-center px-3 py-2.5 ${
         unread ? 'bg-[#E7F3FF]' : 'bg-white'

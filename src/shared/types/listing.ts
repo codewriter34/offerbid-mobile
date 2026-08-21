@@ -31,6 +31,7 @@ export interface Listing {
   city: string | null;
   images: ListingImage[];
   highestBidAmount: number | null;
+  viewCount: number;
   createdAt: string;
 }
 
@@ -43,4 +44,14 @@ export interface CreateListingPayload {
   category: ListingCategory;
   location: string;
   images: string[];
+}
+
+export interface UpdateListingPayload {
+  title?: string;
+  description?: string;
+  askingPrice?: number;
+  minBidPrice?: number;
+  category?: ListingCategory;
+  location?: string;
+  images?: string[];
 }
