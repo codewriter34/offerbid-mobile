@@ -184,6 +184,16 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
               label="I agree to the terms and conditions"
               onToggle={() => setAgreed(v => !v)}
             />
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  'Terms',
+                  'OfferBid is a campus marketplace. Meet in public, inspect items before paying, and never share PINs or OTP codes. WhatsApp contact unlocks only after both sides accept an offer.',
+                )
+              }
+              className="mt-1">
+              <Text className="text-xs font-semibold text-brand-blue">Read summary</Text>
+            </TouchableOpacity>
           </View>
           <AuthButton title="Create account" loading={loading} onPress={handleRegister} />
           <AuthFooterLink

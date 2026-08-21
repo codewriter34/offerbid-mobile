@@ -9,7 +9,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import {pickOneImage} from '@shared/lib/imagePicker';
+import {pickFromCamera, pickOneImage} from '@shared/lib/imagePicker';
 import {RootStackScreenProps} from '@app/navigation/types';
 import {dismissScreen} from '@app/navigation/navigationRef';
 import {useIdentity} from '@features/identity/useIdentity';
@@ -84,23 +84,31 @@ export const IdentityScreen: React.FC<Props> = ({navigation}) => {
   };
 
   if (isLoading && !identity) {
-    return <LoadingSpinner message="Loading KYC status..." />;
+    return <LoadingSpinner message="Checking verification..." />;
   }
 
   return (
     <View style={styles.container}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity onPress={() => dismissScreen(navigation)}>
-        <Text style={styles.back}>Cancel</Text>
+        <Text style={styles.back}>Close</Text>
       </TouchableOpacity>
       <Text style={styles.title}>Verify identity</Text>
       <Text style={styles.subtitle}>
-        Optional. Approval raises your active listing cap from 3 to 10. It does not block bidding.
+        Optional. Approval raises your active listing cap from 3 to 10. It does not block offering.
       </Text>
 
       {identity && (
         <View style={styles.statusCard}>
-          <Text style={styles.statusLabel}>Status: {identity.status}</Text>
+          <Text style={styles.statusLabel}>
+            {identity.status === 'APPROVED'
+              ? 'Verified'
+              : identity.status === 'PENDING'
+                ? 'In review — usually 24–48 hours'
+                : identity.status === 'REJECTED'
+                  ? 'Not approved'
+                  : 'Not submitted'}
+          </Text>
           {identity.rejectionReason ? (
             <Text style={styles.reason}>{identity.rejectionReason}</Text>
           ) : null}
@@ -117,7 +125,13 @@ export const IdentityScreen: React.FC<Props> = ({navigation}) => {
                 key={kind.value}
                 style={[styles.chip, idKind === kind.value && styles.chipActive]}
                 onPress={() => setIdKind(kind.value)}>
-                <Text style={styles.chipText}>{kind.label}</Text>
+                <Text
+                  style={[
+                    styles.chipText,
+                    idKind === kind.value && styles.chipTextActive,
+                  ]}>
+                  {kind.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -135,7 +149,10 @@ export const IdentityScreen: React.FC<Props> = ({navigation}) => {
           <Text style={styles.label}>ID back (optional)</Text>
           <PhotoSlot uri={backUri} onPress={() => pick(setBackUri)} />
           <Text style={styles.label}>Selfie</Text>
-          <PhotoSlot uri={selfieUri} onPress={() => pick(setSelfieUri)} />
+          <PhotoSlot
+            uri={selfieUri}
+            onPress={() => pickFromCamera(0.8).then(uri => uri && setSelfieUri(uri))}
+          />
 
           <Button
             title={submitting ? 'Submitting...' : 'Submit for review'}
@@ -164,7 +181,7 @@ function PhotoSlot({uri, onPress}: {uri: string | null; onPress: () => void}) {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.white},
   content: {padding: spacing.md, paddingTop: spacing.xxl, paddingBottom: spacing.xxl},
-  back: {...typography.body, color: colors.error, marginBottom: spacing.md},
+  back: {...typography.body, color: colors.text.secondary, marginBottom: spacing.md},
   title: {...typography.h1, color: colors.text.primary},
   subtitle: {...typography.bodySmall, color: colors.text.secondary, marginTop: spacing.sm},
   statusCard: {
@@ -193,6 +210,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {backgroundColor: colors.primary, borderColor: colors.primary},
   chipText: {...typography.caption, color: colors.text.primary},
+  chipTextActive: {color: colors.white, fontWeight: '600'},
   input: {
     borderWidth: 1,
     borderColor: colors.border,

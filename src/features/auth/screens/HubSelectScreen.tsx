@@ -85,7 +85,11 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
         updateUser({city, address: address.trim(), location, profileComplete: true});
       }
       setHub({country: selectedCountry ?? '', city, neighborhood: location});
-      navigation.replace('MainTabs', {screen: 'Explore'});
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.replace('MainTabs', {screen: 'Explore'});
+      }
     } catch (err: any) {
       Alert.alert(
         'Error',
@@ -150,13 +154,18 @@ export const HubSelectScreen: React.FC<Props> = ({navigation}) => {
         <Text style={styles.subtitle}>
           Needed before you can post a listing. If your place is missing, choose {otherLabel} and type the real name.
         </Text>
-        <TextInput
-          style={styles.input}
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Street / landmark (required)"
-          placeholderTextColor={colors.text.light}
-        />
+        <Text style={styles.step}>
+          {step === 'country' ? 'Step 1 of 3' : step === 'city' ? 'Step 2 of 3' : 'Step 3 of 3'}
+        </Text>
+        {step === 'neighborhood' ? (
+          <TextInput
+            style={styles.input}
+            value={address}
+            onChangeText={setAddress}
+            placeholder="Street / landmark (required)"
+            placeholderTextColor={colors.text.light}
+          />
+        ) : null}
       </View>
 
       {step === 'country' ? (
@@ -268,7 +277,8 @@ const styles = StyleSheet.create({
   backButton: {marginBottom: spacing.md},
   backText: {...typography.body, color: colors.gradientStart, fontWeight: '600'},
   title: {...typography.h1, color: colors.text.primary, marginBottom: spacing.xs},
-  subtitle: {...typography.bodySmall, color: colors.text.secondary, marginBottom: spacing.md},
+  subtitle: {...typography.bodySmall, color: colors.text.secondary, marginBottom: spacing.sm},
+  step: {...typography.caption, color: colors.primary, fontWeight: '700', marginBottom: spacing.md},
   input: {
     borderWidth: 1,
     borderColor: colors.border,

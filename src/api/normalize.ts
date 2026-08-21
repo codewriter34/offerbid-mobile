@@ -67,43 +67,145 @@ export function extractWhatsAppUrl(data: unknown): string | null {
   );
 }
 
-function imageFromUnknown(value: unknown): string | undefined {
-  if (typeof value === 'string' && value.length > 0) return value;
-  if (!value || typeof value !== 'object') return undefined;
+const IMAGE_URL_KEYS = [
+  'url',
+  'publicUrl',
+  'public_url',
+  'secure_url',
+  'cloudinary_url',
+  'imageUrl',
+  'image_url',
+  'listingImageUrl',
+  'listing_image_url',
+  'thumbnailUrl',
+  'thumbnail_url',
+  'thumbUrl',
+  'coverUrl',
+  'cover_url',
+  'photoUrl',
+  'photo_url',
+  'fileUrl',
+  'file_url',
+  'signedUrl',
+  'signed_url',
+  'src',
+  'uri',
+] as const;
+
+const IMAGE_NESTED_KEYS = [
+  'image',
+  'cover',
+  'coverImage',
+  'thumbnail',
+  'thumb',
+  'photo',
+  'file',
+  'asset',
+  'media',
+  'primaryImage',
+] as const;
+
+const IMAGE_ARRAY_KEYS = ['images', 'imageUrls', 'photos', 'media', 'files'] as const;
+
+function isMediaUrl(value: string): boolean {
+  const url = value.trim();
+  if (!url) return false;
+  if (
+    url.startsWith('file:') ||
+    url.startsWith('content:') ||
+    url.startsWith('data:') ||
+    url.startsWith('ph://') ||
+    url.startsWith('assets-library:')
+  ) {
+    return true;
+  }
+  if (url.startsWith('//')) return true;
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (/\/api\/v\d+\//.test(url) && !/\/(uploads|media|images)\//.test(url)) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
+
+export function normalizeMediaUrl(value: string): string {
+  const url = value.trim();
+  if (url.startsWith('//')) return `https:${url}`;
+  return url;
+}
+
+export function extractImageUrl(value: unknown, depth = 0): string | undefined {
+  if (depth > 4 || value == null) return undefined;
+  if (typeof value === 'string') {
+    return isMediaUrl(value) ? normalizeMediaUrl(value) : undefined;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const url = extractImageUrl(item, depth + 1);
+      if (url) return url;
+    }
+    return undefined;
+  }
+  if (typeof value !== 'object') return undefined;
   const rec = value as Record<string, unknown>;
-  for (const key of ['url', 'publicUrl', 'cloudinary_url', 'secure_url', 'src', 'uri']) {
+  for (const key of IMAGE_URL_KEYS) {
     const item = rec[key];
-    if (typeof item === 'string' && item.length > 0) return item;
+    if (typeof item === 'string' && isMediaUrl(item)) {
+      return normalizeMediaUrl(item);
+    }
+  }
+  for (const key of IMAGE_NESTED_KEYS) {
+    if (key in rec) {
+      const url = extractImageUrl(rec[key], depth + 1);
+      if (url) return url;
+    }
+  }
+  for (const key of IMAGE_ARRAY_KEYS) {
+    if (key in rec) {
+      const url = extractImageUrl(rec[key], depth + 1);
+      if (url) return url;
+    }
   }
   return undefined;
 }
 
-export function listingImageUrl(listing: {
-  images?: Array<string | {url?: string; publicUrl?: string; cloudinary_url?: string}>;
-  imageUrls?: unknown;
-  photos?: unknown;
-  media?: unknown;
-  image?: unknown;
-  coverUrl?: unknown;
-  thumbnail?: unknown;
-}): string | undefined {
-  const pools = [listing.images, listing.imageUrls, listing.photos, listing.media];
-  for (const pool of pools) {
-    if (!Array.isArray(pool) || pool.length === 0) continue;
-    const url = imageFromUnknown(pool[0]);
-    if (url) return url;
+export function extractImageUrls(value: unknown): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const push = (url?: string) => {
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    urls.push(url);
+  };
+
+  if (Array.isArray(value)) {
+    value.forEach(item => push(extractImageUrl(item)));
+    return urls;
   }
-  return (
-    imageFromUnknown(listing.image) ??
-    imageFromUnknown(listing.coverUrl) ??
-    imageFromUnknown(listing.thumbnail)
-  );
+  if (!value || typeof value !== 'object') {
+    push(extractImageUrl(value));
+    return urls;
+  }
+  const rec = value as Record<string, unknown>;
+  for (const key of IMAGE_ARRAY_KEYS) {
+    extractImageUrls(rec[key]).forEach(push);
+  }
+  for (const key of IMAGE_NESTED_KEYS) {
+    if (Array.isArray(rec[key])) extractImageUrls(rec[key]).forEach(push);
+    else push(extractImageUrl(rec[key]));
+  }
+  push(extractImageUrl(rec));
+  return urls;
 }
 
-export function listingImageUrls(listing: {
-  images?: Array<string | {url?: string; publicUrl?: string; cloudinary_url?: string}>;
-}): string[] {
-  return (listing.images ?? [])
-    .map(img => (typeof img === 'string' ? img : img.url ?? img.publicUrl ?? img.cloudinary_url))
-    .filter((url): url is string => !!url);
+export function listingImageUrl(listing: unknown): string | undefined {
+  return extractImageUrl(listing);
+}
+
+export function listingImageUrls(listing: unknown): string[] {
+  const fromTree = extractImageUrls(listing);
+  if (fromTree.length > 0) return fromTree;
+  const url = extractImageUrl(listing);
+  return url ? [url] : [];
 }
