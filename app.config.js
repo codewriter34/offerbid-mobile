@@ -54,6 +54,7 @@ module.exports = {
       softwareKeyboardLayoutMode: 'resize',
       package: 'com.offerbid.app',
       googleServicesFile: './google-services.json',
+      allowBackup: false,
       icon: './assets/icon.png',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
