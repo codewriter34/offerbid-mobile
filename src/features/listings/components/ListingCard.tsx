@@ -1,12 +1,13 @@
 import React from 'react';
-import {View, Text, Image, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {Listing} from '@shared/types';
 import {listingImageUrl} from '@api/normalize';
-import {colors} from '@shared/theme/colors';
-import {typography} from '@shared/theme/typography';
-import {spacing, borderRadius} from '@shared/theme/spacing';
-import {formatPrice, formatRelativeTime} from '@shared/lib/formatters';
+import {formatListingPlace, formatPrice, formatRelativeTime} from '@shared/lib/formatters';
 import {CategoryBadge} from '@shared/ui/CategoryBadge';
+import {AppIcon} from '@shared/ui/AppIcon';
+import {MediaThumb} from '@shared/ui/CachedImage';
+import {shadows} from '@shared/theme/shadows';
+import {colors} from '@shared/theme/colors';
 
 interface ListingCardProps {
   listing: Listing;
@@ -20,132 +21,70 @@ export const ListingCard: React.FC<ListingCardProps> = ({
   compact = false,
 }) => {
   const thumbnailUrl = listingImageUrl(listing);
+  const place = formatListingPlace(listing);
 
   return (
     <TouchableOpacity
-      style={[styles.container, compact && styles.containerCompact]}
       onPress={() => onPress(listing.id)}
-      activeOpacity={0.7}>
-      <View style={[styles.imageWrapper, compact && styles.imageWrapperCompact]}>
-        {thumbnailUrl ? (
-          <Image source={{uri: thumbnailUrl}} style={styles.image} />
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderText}>No Image</Text>
-          </View>
-        )}
-        <View style={styles.badgeOverlay}>
+      activeOpacity={0.8}
+      className={`overflow-hidden rounded-lg border border-slate-200 bg-white ${
+        compact ? 'flex-1' : 'mb-3'
+      }`}
+      style={shadows.card}
+      accessibilityRole="button"
+      accessibilityLabel={listing.title}>
+      <View className={`relative w-full ${compact ? 'h-32' : 'h-44'}`}>
+        <MediaThumb
+          uri={thumbnailUrl}
+          recyclingKey={listing.id}
+          className="h-full w-full"
+          iconSize={compact ? 20 : 28}
+        />
+        <View className="absolute left-2 top-2">
           <CategoryBadge category={listing.category} />
         </View>
       </View>
 
-      <View style={[styles.content, compact && styles.contentCompact]}>
-        <Text style={[styles.title, compact && styles.titleCompact]} numberOfLines={2}>
+      <View className={compact ? 'px-2.5 py-2' : 'px-3.5 py-3'}>
+        <Text
+          className={`font-semibold text-brand-black ${
+            compact ? 'text-[13px] leading-4' : 'text-[16px] leading-5'
+          }`}
+          numberOfLines={2}>
           {listing.title}
         </Text>
 
-        <Text style={[styles.price, compact && styles.priceCompact]}>
+        {place ? (
+          <View className="mt-1 flex-row items-center">
+            <AppIcon name="pin" size={12} color={colors.brand.gray} />
+            <Text className="ml-1 flex-1 text-sm text-brand-gray" numberOfLines={1}>
+              {place}
+            </Text>
+          </View>
+        ) : null}
+
+        <Text
+          className={`mt-1 font-bold text-brand-black ${
+            compact ? 'text-[15px]' : 'text-[18px]'
+          }`}>
           {formatPrice(listing.askingPrice, listing.currency)}
         </Text>
 
-        {compact ? (
-          <Text style={styles.time} numberOfLines={1}>
+        <Text className="mt-0.5 text-[11px] text-brand-gray" numberOfLines={1}>
+          Min offer {formatPrice(listing.minBidPrice, listing.currency)}
+          {listing.offerCount
+            ? ` · ${listing.offerCount} offer${listing.offerCount === 1 ? '' : 's'}`
+            : compact
+              ? ` · ${formatRelativeTime(listing.createdAt)}`
+              : ''}
+        </Text>
+
+        {compact ? null : (
+          <Text className="mt-1 text-xs text-brand-gray">
             {formatRelativeTime(listing.createdAt)}
           </Text>
-        ) : (
-          <View style={styles.footer}>
-            <Text style={styles.minBid}>
-              Min bid: {formatPrice(listing.minBidPrice, listing.currency)}
-            </Text>
-            <Text style={styles.time}>
-              {formatRelativeTime(listing.createdAt)}
-            </Text>
-          </View>
         )}
       </View>
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-    elevation: 2,
-    shadowColor: colors.black,
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  containerCompact: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  imageWrapper: {
-    height: 180,
-    position: 'relative',
-  },
-  imageWrapperCompact: {
-    height: 128,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  placeholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    ...typography.bodySmall,
-    color: colors.text.light,
-  },
-  badgeOverlay: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  contentCompact: {
-    padding: spacing.sm,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  titleCompact: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  price: {
-    ...typography.price,
-    color: colors.gradientStart,
-    marginBottom: spacing.sm,
-  },
-  priceCompact: {
-    fontSize: 15,
-    marginBottom: 4,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  minBid: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  time: {
-    ...typography.caption,
-    color: colors.text.light,
-  },
-});

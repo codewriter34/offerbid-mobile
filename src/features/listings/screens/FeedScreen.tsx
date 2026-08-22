@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {MainTabScreenProps} from '@app/navigation/types';
 import {useFeed} from '@features/listings/useFeed';
+import {useRealtimeBids} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {useHubStore} from '@features/auth/hubStore';
 import {ListingCard} from '@features/listings/components/ListingCard';
@@ -21,6 +22,7 @@ import {Logo} from '@shared/ui/Logo';
 import {GuestInvite} from '@shared/ui/GuestInvite';
 import {NotificationBell} from '@shared/ui/NotificationBell';
 import {useNotifications} from '@features/notifications/useNotifications';
+import {formatPlace} from '@shared/lib/formatters';
 
 type Props = MainTabScreenProps<'Explore'>;
 
@@ -38,13 +40,16 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
     setFilters,
   } = useFeed();
   const user = useAuthStore(s => s.user);
+  const selectedHub = useAuthStore(s => s.selectedHub);
   const categories = useHubStore(s => s.categories);
   const {unreadCount, fetchNotifications} = useNotifications();
   const [searchText, setSearchText] = useState('');
 
+  useRealtimeBids();
+
   useEffect(() => {
-    fetchListings(true);
-  }, [filters.category, filters.sortBy]);
+    void fetchListings(false);
+  }, [filters.category, filters.sortBy, fetchListings]);
 
   useEffect(() => {
     if (user) {
@@ -82,7 +87,14 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
     <View className="mb-2 flex-row items-center justify-between gap-2 px-4">
       <View className="min-w-0 flex-1 flex-row items-center gap-2">
         <Logo size={36} />
-        <Text className="text-[22px] font-bold text-brand-black">OfferBid</Text>
+        <View className="min-w-0 flex-1">
+          <Text className="text-[22px] font-bold text-brand-black">OfferBid</Text>
+          {selectedHub?.neighborhood || selectedHub?.city ? (
+            <Text className="text-[12px] text-brand-gray" numberOfLines={1}>
+              {formatPlace(selectedHub.neighborhood, selectedHub.city)}
+            </Text>
+          ) : null}
+        </View>
       </View>
       <View className="flex-row items-center gap-2">
         <NotificationBell
@@ -137,15 +149,28 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
           {header}
 
           <View className="mb-2 px-4">
-            <TextInput
-              className="rounded-lg bg-brand-white px-4 py-2.5 text-base text-brand-black"
-              placeholder="Search listings..."
-              placeholderTextColor="#64748B"
-              value={searchText}
-              onChangeText={setSearchText}
-              onSubmitEditing={handleSearch}
-              returnKeyType="search"
-            />
+            <View className="flex-row items-center rounded-xl border border-slate-200 bg-white px-4">
+              <TextInput
+                className="min-h-[42px] flex-1 py-2.5 text-base text-brand-black"
+                placeholder="Search listings..."
+                placeholderTextColor="#64748B"
+                value={searchText}
+                onChangeText={setSearchText}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+              />
+              {searchText ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchText('');
+                    setFilters({search: ''});
+                    fetchListings(true);
+                  }}
+                  hitSlop={8}>
+                  <Text className="text-sm font-semibold text-brand-gray">Clear</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
             {!user ? (
               <GuestInvite onPress={() => navigation.navigate('Auth')} />
             ) : null}

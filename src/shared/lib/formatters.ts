@@ -1,6 +1,12 @@
 const CURRENCY_MAP: Record<string, string> = {
   Cameroon: 'XAF',
+  CAMEROON: 'XAF',
+  CM: 'XAF',
+  XAF: 'XAF',
   Nigeria: 'NGN',
+  NIGERIA: 'NGN',
+  NG: 'NGN',
+  NGN: 'NGN',
 };
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -22,7 +28,11 @@ export function formatPrice(amount: number, currency = 'XAF'): string {
 }
 
 export function getCurrencyForCountry(country: string): string {
-  return CURRENCY_MAP[country] ?? 'XAF';
+  return CURRENCY_MAP[country] ?? CURRENCY_MAP[country.trim().toUpperCase()] ?? 'XAF';
+}
+
+export function currencyLabel(currency = 'XAF'): string {
+  return CURRENCY_SYMBOLS[currency] ?? currency;
 }
 
 const MINUTE = 60;
@@ -102,4 +112,28 @@ export function expiryProgress(createdAt: string | null, expiresAt: string | nul
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength - 3) + '...';
+}
+
+export function formatPlace(
+  ...parts: Array<string | null | undefined>
+): string {
+  const tokens: string[] = [];
+  const seen = new Set<string>();
+  for (const part of parts) {
+    if (!part) continue;
+    for (const token of part.split(',').map(item => item.trim()).filter(Boolean)) {
+      const key = token.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tokens.push(token);
+    }
+  }
+  return tokens.join(', ');
+}
+
+export function formatListingPlace(listing: {
+  location?: string | null;
+  city?: string | null;
+}): string {
+  return formatPlace(listing.location, listing.city);
 }

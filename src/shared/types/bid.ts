@@ -13,6 +13,8 @@ export interface Bid {
   listingTitle?: string;
   listingImageUrl?: string | null;
   listingCategory?: string | null;
+  buyerName?: string | null;
+  buyerAvatarUrl?: string | null;
   minBidPrice?: number | null;
   askingPrice?: number | null;
   currency?: string;

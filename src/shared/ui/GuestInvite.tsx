@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {View, Text, TouchableOpacity, Animated, Easing} from 'react-native';
+import {View, Text, TouchableOpacity, Animated} from 'react-native';
 import {Logo} from './Logo';
 
 interface GuestInviteProps {
@@ -9,7 +9,6 @@ interface GuestInviteProps {
 
 export function GuestInvite({onPress, onDismiss}: GuestInviteProps) {
   const enter = useRef(new Animated.Value(0)).current;
-  const nudge = useRef(new Animated.Value(0)).current;
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
@@ -19,28 +18,7 @@ export function GuestInvite({onPress, onDismiss}: GuestInviteProps) {
       tension: 64,
       useNativeDriver: true,
     }).start();
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(1200),
-        Animated.timing(nudge, {
-          toValue: 1,
-          duration: 420,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(nudge, {
-          toValue: 0,
-          duration: 420,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.delay(1600),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [enter, nudge]);
+  }, [enter]);
 
   const dismiss = () => {
     Animated.timing(enter, {
@@ -92,21 +70,9 @@ export function GuestInvite({onPress, onDismiss}: GuestInviteProps) {
             Create a free account to place offers and chat when a deal is agreed.
           </Text>
         </View>
-        <Animated.View
-          style={{
-            transform: [
-              {
-                translateX: nudge.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 5],
-                }),
-              },
-            ],
-          }}>
-          <View className="rounded-full bg-brand-blue px-3 py-2">
-            <Text className="text-[13px] font-bold text-white">Sign in</Text>
-          </View>
-        </Animated.View>
+        <View className="rounded-full bg-brand-blue px-3 py-2">
+          <Text className="text-[13px] font-bold text-white">Sign in</Text>
+        </View>
       </TouchableOpacity>
       <TouchableOpacity
         onPress={dismiss}

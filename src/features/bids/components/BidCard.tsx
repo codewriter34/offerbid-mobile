@@ -2,12 +2,13 @@ import React from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import {Bid, BidStatus} from '@shared/types';
 import {formatPrice, formatRelativeTime} from '@shared/lib/formatters';
-import {Button} from '@shared/ui/Button';
 import {CountdownTimer} from '@shared/ui/CountdownTimer';
+import {AvatarImage} from '@shared/ui/CachedImage';
 
 interface BidCardProps {
   bid: Bid;
   isSeller: boolean;
+  isOwnBid?: boolean;
   onAccept?: (id: string) => void;
   onReject?: (id: string) => void;
   onCounter?: (id: string) => void;
@@ -27,6 +28,7 @@ const STATUS_CHIP: Record<string, {bg: string; fg: string; label: string}> = {
 export const BidCard: React.FC<BidCardProps> = ({
   bid,
   isSeller,
+  isOwnBid = false,
   onAccept,
   onReject,
   onCounter,
@@ -39,6 +41,10 @@ export const BidCard: React.FC<BidCardProps> = ({
   const isCountered = status === 'COUNTERED';
   const displayAmount =
     bid.counterAmount && isCountered ? bid.counterAmount : bid.amount;
+  const currency = bid.currency ?? 'XAF';
+  const personName = isSeller
+    ? bid.buyerName?.trim() || 'Buyer'
+    : 'You';
   const amountLabel = isCountered
     ? isSeller
       ? 'Your counter'
@@ -48,7 +54,7 @@ export const BidCard: React.FC<BidCardProps> = ({
       : 'Your offer';
 
   const showSellerActions = status === 'PENDING' && isSeller;
-  const showBuyerCounterActions = isCountered && !isSeller;
+  const showBuyerCounterActions = isCountered && !isSeller && isOwnBid;
   const showWhatsApp = status === 'ACCEPTED' && onWhatsApp;
   const hasActions = showSellerActions || showBuyerCounterActions || showWhatsApp;
 
@@ -61,102 +67,84 @@ export const BidCard: React.FC<BidCardProps> = ({
         onPress={onPress ? () => onPress(bid) : undefined}
         disabled={!onPress}
         className="px-4 pb-3 pt-3.5">
-        <View className="flex-row items-start justify-between gap-3">
-          <Text
-            className="min-w-0 flex-1 text-[16px] font-semibold leading-5 text-brand-black"
-            numberOfLines={2}>
-            {bid.listingTitle ?? 'Listing'}
-          </Text>
-          <View className="rounded-full px-2.5 py-1" style={{backgroundColor: chip.bg}}>
-            <Text className="text-[11px] font-bold" style={{color: chip.fg}}>
-              {chip.label}
-            </Text>
-          </View>
-        </View>
-
-        <Text className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-brand-gray">
-          {amountLabel}
-        </Text>
-        <Text className="text-[22px] font-bold text-brand-black">
-          {formatPrice(displayAmount)}
-        </Text>
-        {isCountered && bid.counterAmount != null ? (
-          <Text className="mt-0.5 text-sm text-brand-charcoal">
-            Original offer {formatPrice(bid.amount)}
-          </Text>
-        ) : null}
-
-        <View className="mt-2 flex-row items-center justify-between">
-          <Text className="text-xs text-brand-gray">
-            {formatRelativeTime(bid.createdAt)}
-          </Text>
-          {status === 'PENDING' && bid.expiresAt ? (
-            <View className="flex-row items-center">
-              <Text className="text-xs text-brand-gray">Expires </Text>
-              <CountdownTimer expiresAt={bid.expiresAt} />
+        <View className="flex-row items-start gap-3">
+          <AvatarImage uri={isSeller ? bid.buyerAvatarUrl : null} name={personName} size={40} />
+          <View className="min-w-0 flex-1">
+            <View className="flex-row items-start justify-between gap-3">
+              <Text
+                className="min-w-0 flex-1 text-[16px] font-semibold leading-5 text-brand-black"
+                numberOfLines={2}>
+                {personName}
+              </Text>
+              <View className="rounded-full px-2.5 py-1" style={{backgroundColor: chip.bg}}>
+                <Text className="text-[11px] font-bold" style={{color: chip.fg}}>
+                  {chip.label}
+                </Text>
+              </View>
             </View>
-          ) : null}
+
+            <Text className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-brand-gray">
+              {amountLabel}
+            </Text>
+            <Text className="text-[22px] font-bold text-brand-black">
+              {formatPrice(displayAmount, currency)}
+            </Text>
+            {isCountered && bid.counterAmount != null ? (
+              <Text className="mt-0.5 text-sm text-brand-charcoal">
+                Original offer {formatPrice(bid.amount, currency)}
+              </Text>
+            ) : null}
+
+            <View className="mt-2 flex-row items-center justify-between">
+              <Text className="text-xs text-brand-gray">
+                {formatRelativeTime(bid.createdAt)}
+              </Text>
+              {status === 'PENDING' && bid.expiresAt ? (
+                <View className="flex-row items-center">
+                  <Text className="text-xs text-brand-gray">Expires </Text>
+                  <CountdownTimer expiresAt={bid.expiresAt} />
+                </View>
+              ) : null}
+            </View>
+          </View>
         </View>
       </TouchableOpacity>
 
       {hasActions ? (
-        <View className="flex-row gap-2 border-t border-slate-100 px-4 py-3">
-          {showSellerActions ? (
-            <>
-              <Button
-                title="Accept"
-                variant="secondary"
-                size="sm"
-                onPress={() => onAccept?.(bid.id)}
+        <View className="border-t border-slate-100 px-4 py-3">
+          {showSellerActions || showBuyerCounterActions ? (
+            <View className="gap-2">
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  disabled={disabled}
+                  onPress={() => onAccept?.(bid.id)}
+                  className="flex-1 items-center rounded-xl bg-brand-black py-2.5">
+                  <Text className="text-[13px] font-semibold text-white">Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  disabled={disabled}
+                  onPress={() => onCounter?.(bid.id)}
+                  className="flex-1 items-center rounded-xl border border-brand-blue py-2.5">
+                  <Text className="text-[13px] font-semibold text-brand-blue">Counter</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
                 disabled={disabled}
-                style={{flex: 1}}
-              />
-              <Button
-                title="Counter"
-                variant="outline"
-                size="sm"
-                onPress={() => onCounter?.(bid.id)}
-                disabled={disabled}
-                style={{flex: 1}}
-              />
-              <Button
-                title="Reject"
-                variant="danger"
-                size="sm"
                 onPress={() => onReject?.(bid.id)}
-                disabled={disabled}
-                style={{flex: 1}}
-              />
-            </>
-          ) : null}
-          {showBuyerCounterActions ? (
-            <>
-              <Button
-                title="Accept counter"
-                variant="secondary"
-                size="sm"
-                onPress={() => onAccept?.(bid.id)}
-                disabled={disabled}
-                style={{flex: 1}}
-              />
-              <Button
-                title="Decline"
-                variant="danger"
-                size="sm"
-                onPress={() => onReject?.(bid.id)}
-                disabled={disabled}
-                style={{flex: 1}}
-              />
-            </>
+                className="items-center py-1">
+                <Text className="text-[13px] font-semibold text-brand-danger">
+                  {showBuyerCounterActions ? 'Decline' : 'Reject'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : null}
           {showWhatsApp ? (
-            <Button
-              title="Chat on WhatsApp"
-              variant="secondary"
-              size="sm"
+            <TouchableOpacity
               onPress={() => onWhatsApp?.(bid)}
-              style={{flex: 1, backgroundColor: '#25D366'}}
-            />
+              className="items-center rounded-xl py-2.5"
+              style={{backgroundColor: '#25D366'}}>
+              <Text className="text-[13px] font-semibold text-white">Chat on WhatsApp</Text>
+            </TouchableOpacity>
           ) : null}
         </View>
       ) : null}

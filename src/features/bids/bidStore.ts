@@ -1,5 +1,6 @@
 import {create} from 'zustand';
 import {Bid} from '@shared/types';
+import {mergeBid} from './bidService';
 
 interface BidState {
   myBids: Bid[];
@@ -35,7 +36,7 @@ export const useBidStore = create<BidState>(set => ({
   updateBid: (bidId, partial) =>
     set(state => {
       const update = (list: Bid[]) =>
-        list.map(b => (b.id === bidId ? {...b, ...partial} : b));
+        list.map(b => (b.id === bidId ? mergeBid(b, partial) : b));
       const updatedListingBids = {...state.listingBids};
       for (const key of Object.keys(updatedListingBids)) {
         updatedListingBids[key] = update(updatedListingBids[key]);
@@ -53,7 +54,7 @@ export const useBidStore = create<BidState>(set => ({
         item.id === bid.id || (bid.listingId && item.listingId === bid.listingId);
       const merge = (list: Bid[]) =>
         list.some(sameOffer)
-          ? list.map(item => (sameOffer(item) ? {...item, ...bid} : item))
+          ? list.map(item => (sameOffer(item) ? mergeBid(item, bid) : item))
           : [bid, ...list];
 
       const listingBids = {...state.listingBids};

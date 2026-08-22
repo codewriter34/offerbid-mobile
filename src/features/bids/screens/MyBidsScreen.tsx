@@ -127,8 +127,22 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
       listingTitle: bid.listingTitle ?? 'Listing',
       minBid: bid.minBidPrice ?? 0,
       startingPrice: bid.askingPrice ?? bid.amount,
+      currency: bid.currency,
       bidId: bid.id,
       currentAmount: bid.amount,
+    });
+  };
+
+  const openRecounter = (bid: Bid) => {
+    navigation.navigate('SubmitBid', {
+      listingId: bid.listingId,
+      listingTitle: bid.listingTitle ?? 'Listing',
+      minBid: bid.minBidPrice ?? 0,
+      startingPrice: bid.askingPrice ?? bid.amount,
+      recounter: true,
+      sellerCounterAmount: bid.counterAmount ?? bid.amount,
+      currentAmount: bid.amount,
+      currency: bid.currency,
     });
   };
 
@@ -145,7 +159,7 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
     <View className="border-b border-slate-200 bg-white px-4 pb-3 pt-2">
       <View className="flex-row items-start justify-between gap-3">
         <View className="min-w-0 flex-1">
-          <Text className="text-[22px] font-bold text-brand-black">My Bids</Text>
+          <Text className="text-[22px] font-bold text-brand-black">My Offers</Text>
           <Text className="mt-0.5 text-sm text-brand-gray">
             Track and manage all your offers in one place.
           </Text>
@@ -234,6 +248,7 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
               onManage={openManage}
               onAcceptCounter={handleAcceptCounter}
               onDeclineCounter={handleRejectCounter}
+              onRecounter={openRecounter}
               onWhatsApp={handleWhatsApp}
             />
           )}

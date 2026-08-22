@@ -1,3 +1,30 @@
+const fs = require('fs');
+const path = require('path');
+
+function loadDotEnv() {
+  const envPath = path.join(__dirname, '.env');
+  if (!fs.existsSync(envPath)) return;
+  for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq < 1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] == null || process.env[key] === '') {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadDotEnv();
+
 module.exports = {
   expo: {
     name: 'OfferBid',
@@ -17,11 +44,16 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.offerbid.app',
+      googleServicesFile: './GoogleService-Info.plist',
       icon: './assets/store/appstore-icon-1024.png',
+      infoPlist: {
+        UIBackgroundModes: ['remote-notification'],
+      },
     },
     android: {
       softwareKeyboardLayoutMode: 'resize',
       package: 'com.offerbid.app',
+      googleServicesFile: './google-services.json',
       icon: './assets/icon.png',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
@@ -49,7 +81,11 @@ module.exports = {
           color: '#0052FF',
         },
       ],
+      '@react-native-firebase/app',
+      '@react-native-firebase/auth',
+      '@react-native-firebase/messaging',
       'expo-secure-store',
+      'expo-web-browser',
       'expo-asset',
       'expo-font',
     ],
@@ -70,6 +106,14 @@ module.exports = {
         process.env.GOOGLE_WEB_CLIENT_ID ??
         process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
         '',
+      firebaseApiKey:
+        process.env.FIREBASE_API_KEY ??
+        process.env.EXPO_PUBLIC_FIREBASE_API_KEY ??
+        'AIzaSyBarGoOPnoMV490gxz9n1U0ImvszgJWWzM',
+      firebaseProjectId: 'offerbid-59cd9',
+      firebaseAppId: '1:888122949576:android:7c3139c59898c11a730afd',
+      firebaseMessagingSenderId: '888122949576',
+      firebaseStorageBucket: 'offerbid-59cd9.firebasestorage.app',
       cloudinaryCloudName:
         process.env.CLOUDINARY_CLOUD_NAME ??
         process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME ??

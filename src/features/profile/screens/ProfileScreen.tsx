@@ -1,5 +1,5 @@
 import React, {useEffect} from 'react';
-import {View, Text, ScrollView, TouchableOpacity, Alert, Image} from 'react-native';
+import {View, Text, ScrollView, TouchableOpacity, Alert} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {MainTabScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
@@ -16,10 +16,11 @@ import {uploadMedia} from '@shared/lib/uploads';
 import {updateAvatar, updateProfile} from '@features/profile/profileService';
 import {UpdateProfilePayload} from '@shared/types';
 import {pickOneImage} from '@shared/lib/imagePicker';
-import {formatMemberSince} from '@shared/lib/formatters';
+import {formatMemberSince, formatPlace} from '@shared/lib/formatters';
 import {AppShell} from '@shared/ui/AppShell';
 import {NotificationBell} from '@shared/ui/NotificationBell';
 import {AppIcon, AppIconName} from '@shared/ui/AppIcon';
+import {AvatarImage} from '@shared/ui/CachedImage';
 import {shadows} from '@shared/theme/shadows';
 import {colors} from '@shared/theme/colors';
 
@@ -51,9 +52,10 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
     identity?.listingCap ??
     (user?.isVerified ? MAX_ACTIVE_LISTINGS_VERIFIED : MAX_ACTIVE_LISTINGS_UNVERIFIED);
   const verified = identity?.status === 'APPROVED' || user?.isVerified;
-  const location = selectedHub
-    ? `${selectedHub.neighborhood}, ${selectedHub.city}`
-    : [user?.location, user?.city].filter(Boolean).join(', ');
+  const location = formatPlace(
+    selectedHub?.neighborhood ?? user?.location,
+    selectedHub?.city ?? user?.city,
+  );
   const memberSince = user?.createdAt ? formatMemberSince(user.createdAt) : '';
 
   const handleAvatar = async () => {
@@ -164,18 +166,7 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
             </View>
             <View className="flex-row items-start">
               <TouchableOpacity onPress={handleAvatar} className="relative">
-                {user?.avatarUrl ? (
-                  <Image
-                    source={{uri: user.avatarUrl}}
-                    className="h-16 w-16 rounded-full border-2 border-white"
-                  />
-                ) : (
-                  <View className="h-16 w-16 items-center justify-center rounded-full bg-brand-charcoal">
-                    <Text className="text-[22px] font-bold text-white">
-                      {user?.fullName?.charAt(0)?.toUpperCase() ?? '?'}
-                    </Text>
-                  </View>
-                )}
+                <AvatarImage uri={user?.avatarUrl} name={user?.fullName} size={64} />
                 <View className="absolute -bottom-0.5 -right-0.5 h-6 w-6 items-center justify-center rounded-full bg-white">
                   <AppIcon name="camera" size={13} color={colors.brand.black} />
                 </View>

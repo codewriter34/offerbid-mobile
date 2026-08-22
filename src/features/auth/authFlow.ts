@@ -1,6 +1,7 @@
 import {Alert} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {GoogleSignInStatusCodes} from '@features/auth/authService';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
@@ -17,11 +18,7 @@ export function finishAuth(
     root.replace('HubSelect');
     return;
   }
-  if (root.canGoBack()) {
-    root.goBack();
-    return;
-  }
-  root.navigate('MainTabs', {screen: 'Explore'});
+  dismissScreen(root);
 }
 
 export function showApiError(title: string, error: any) {
@@ -40,8 +37,17 @@ export function showGoogleError(error: any) {
     );
     return;
   }
+  const apiCode = error?.response?.data?.code;
+  const apiMessage = error?.response?.data?.message;
+  if (apiCode === 'FIREBASE_NOT_CONFIGURED') {
+    Alert.alert(
+      'Google Sign-In unavailable',
+      apiMessage ?? 'Google Sign-In is not configured on this server.',
+    );
+    return;
+  }
   Alert.alert(
     'Sign In Failed',
-    error?.message ?? 'Google sign-in is not available in Expo Go yet.',
+    apiMessage ?? error?.message ?? 'Google sign-in failed. Try again or use email.',
   );
 }

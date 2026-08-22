@@ -30,7 +30,7 @@ import {withTimeout} from '@shared/lib/withTimeout';
 import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '@shared/types';
 
 export function useAuth() {
-  const {user, isAuthenticated, isLoading, setUser, setLoading, setHub} =
+  const {user, isAuthenticated, isLoading, setUser, setHub} =
     useAuthStore();
   const tokenRefreshUnsub = useRef<(() => void) | null>(null);
 
@@ -104,25 +104,13 @@ export function useAuth() {
   };
 
   const signIn = useCallback(async () => {
-    setLoading(true);
-    try {
-      const result = await signInWithGoogle();
-      return applySession(result.user);
-    } catch (error) {
-      setUser(null);
-      throw error;
-    }
+    const result = await signInWithGoogle();
+    return applySession(result.user);
   }, []);
 
   const login = useCallback(async (payload: LoginPayload) => {
-    setLoading(true);
-    try {
-      const result = await loginWithEmail(payload);
-      return applySession(result.user);
-    } catch (error) {
-      setUser(null);
-      throw error;
-    }
+    const result = await loginWithEmail(payload);
+    return applySession(result.user);
   }, []);
 
   const register = useCallback(async (payload: RegisterPayload) => {
@@ -130,14 +118,8 @@ export function useAuth() {
   }, []);
 
   const confirmOtp = useCallback(async (payload: VerifyOtpPayload) => {
-    setLoading(true);
-    try {
-      const result = await verifyOtp(payload);
-      return applySession(result.user);
-    } catch (error) {
-      setLoading(false);
-      throw error;
-    }
+    const result = await verifyOtp(payload);
+    return applySession(result.user);
   }, []);
 
   const sendOtp = useCallback(
@@ -153,14 +135,8 @@ export function useAuth() {
 
   const confirmPasswordReset = useCallback(
     async (payload: {email: string; code: string; password: string}) => {
-      setLoading(true);
-      try {
-        const result = await resetPassword(payload);
-        return applySession(result.user);
-      } catch (error) {
-        setLoading(false);
-        throw error;
-      }
+      const result = await resetPassword(payload);
+      return applySession(result.user);
     },
     [],
   );

@@ -12,24 +12,29 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {useBids} from '@features/bids/useBids';
 import {isValidBidAmount} from '@shared/lib/validators';
 import {formatPrice} from '@shared/lib/formatters';
 import {AmountInput} from '@features/bids/components/AmountInput';
 import {Button} from '@shared/ui/Button';
+import {SuccessBurstHost} from '@shared/ui/SuccessBurst';
+import {showSuccessBurst} from '@shared/ui/successBurstStore';
 
 type Props = RootStackScreenProps<'SubmitBid'>;
 
 export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
-  const {listingId, listingTitle, minBid, startingPrice, bidId, currentAmount} =
+  const {listingId, listingTitle, minBid, startingPrice, bidId, currentAmount, recounter, sellerCounterAmount, currency = 'XAF'} =
     route.params;
-  const isUpdate = Boolean(bidId);
+  const isRecounter = Boolean(recounter);
+  const isUpdate = Boolean(bidId) && !isRecounter;
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const {submitBid} = useBids();
-  const [amount, setAmount] = useState(
-    currentAmount != null ? String(currentAmount) : '',
-  );
+  const [amount, setAmount] = useState(() => {
+    if (currentAmount != null && !recounter) return String(currentAmount);
+    return '';
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -60,7 +65,7 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
     const numAmount = parseFloat(amount);
 
     if (!isValidBidAmount(numAmount, minBid)) {
-      setError(`Bid must be at least ${formatPrice(minBid)}`);
+      setError(`Offer must be at least ${formatPrice(minBid, currency)}`);
       return;
     }
 
@@ -68,13 +73,21 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
     setSubmitting(true);
     try {
       await submitBid({listingId, offerAmount: numAmount});
-      Alert.alert(
-        isUpdate ? 'Offer Updated' : 'Bid Submitted',
-        isUpdate
-          ? 'Your offer has been updated.'
-          : 'Your offer has been sent to the seller!',
-        [{text: 'OK', onPress: () => navigation.goBack()}],
-      );
+      showSuccessBurst({
+        kind: isRecounter ? 'check' : 'confetti',
+        title: isRecounter
+          ? 'Counter sent'
+          : isUpdate
+            ? 'Offer updated'
+            : 'Offer sent',
+        message: isRecounter
+          ? 'Your new offer is on its way to the seller.'
+          : isUpdate
+            ? 'The seller will see your updated amount.'
+            : 'The seller will see your offer. We will notify you when they reply.',
+        actionLabel: 'Done',
+        onAction: () => dismissScreen(navigation),
+      });
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
@@ -88,11 +101,11 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
       <View
         className="flex-row items-center justify-between border-b border-slate-200 px-4 py-3"
         style={{paddingTop: insets.top + 10}}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text className="text-base font-semibold text-brand-danger">Cancel</Text>
+        <TouchableOpacity onPress={() => dismissScreen(navigation)} hitSlop={12}>
+          <Text className="text-base font-semibold text-brand-charcoal">Close</Text>
         </TouchableOpacity>
         <Text className="text-lg font-bold text-brand-black">
-          {isUpdate ? 'Manage Bid' : 'Make an Offer'}
+          {isUpdate ? 'Manage Bid' : isRecounter ? 'Counter back' : 'Make an Offer'}
         </Text>
         <View className="w-14" />
       </View>
@@ -114,20 +127,28 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
             <View className="mb-2 flex-row items-center justify-between">
               <Text className="text-sm text-brand-charcoal">Asking price</Text>
               <Text className="text-base font-semibold text-brand-black">
-                {formatPrice(startingPrice)}
+                {formatPrice(startingPrice, currency)}
               </Text>
             </View>
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-brand-charcoal">Minimum bid</Text>
+              <Text className="text-sm text-brand-charcoal">Minimum offer</Text>
               <Text className="text-base font-semibold text-brand-black">
-                {formatPrice(minBid)}
+                {formatPrice(minBid, currency)}
               </Text>
             </View>
             {isUpdate && currentAmount != null ? (
               <View className="mt-2 flex-row items-center justify-between">
                 <Text className="text-sm text-brand-charcoal">Current offer</Text>
                 <Text className="text-base font-semibold text-brand-black">
-                  {formatPrice(currentAmount)}
+                  {formatPrice(currentAmount, currency)}
+                </Text>
+              </View>
+            ) : null}
+            {isRecounter && sellerCounterAmount != null ? (
+              <View className="mt-2 flex-row items-center justify-between">
+                <Text className="text-sm text-brand-charcoal">Seller counter</Text>
+                <Text className="text-base font-semibold text-brand-black">
+                  {formatPrice(sellerCounterAmount, currency)}
                 </Text>
               </View>
             ) : null}
@@ -136,6 +157,14 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
           <Text className="mb-2 mt-6 text-sm font-semibold text-brand-black">
             Your offer
           </Text>
+          {isRecounter ? (
+            <Text className="mb-2 text-xs text-brand-gray">
+              Enter a new amount. This replaces your previous offer.
+              {sellerCounterAmount != null
+                ? ` Match ${formatPrice(sellerCounterAmount, currency)} to accept their number.`
+                : ''}
+            </Text>
+          ) : null}
           <AmountInput
             value={amount}
             onChangeText={text => {
@@ -144,12 +173,13 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
             }}
             error={Boolean(error)}
             placeholder="Enter amount"
+            currency={currency}
           />
           {error ? (
             <Text className="mt-2 text-center text-xs text-brand-danger">{error}</Text>
           ) : (
             <Text className="mt-2 text-center text-xs text-brand-gray">
-              Must be at least {formatPrice(minBid)}
+              Must be at least {formatPrice(minBid, currency)}
             </Text>
           )}
         </ScrollView>
@@ -161,7 +191,7 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
               Math.max(insets.bottom, 12) + (Platform.OS === 'ios' ? 0 : keyboardHeight),
           }}>
           <Button
-            title={isUpdate ? 'Update Offer' : 'Submit Offer'}
+            title={isRecounter ? 'Send counter' : isUpdate ? 'Update Offer' : 'Submit Offer'}
             onPress={handleSubmit}
             variant="primary"
             size="lg"
@@ -170,6 +200,7 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
           />
         </View>
       </KeyboardAvoidingView>
+      <SuccessBurstHost />
     </View>
   );
 };

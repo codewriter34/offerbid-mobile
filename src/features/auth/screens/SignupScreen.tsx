@@ -3,6 +3,7 @@ import {Alert, Text, TouchableOpacity, View} from 'react-native';
 import {AuthStackScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
 import {finishAuth, showApiError, showGoogleError} from '@features/auth/authFlow';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {COUNTRY_OPTIONS} from '@shared/config/hubs';
 import {Country} from '@shared/types';
 import {
@@ -121,7 +122,7 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
   return (
     <AuthShell
       canClose={navigation.getParent()?.canGoBack() ?? navigation.canGoBack()}
-      onClose={() => navigation.getParent()?.goBack() ?? navigation.goBack()}>
+      onClose={() => dismissScreen(navigation)}>
       <AuthHeading
         title={step === 'form' ? 'Create account' : 'Check your email'}
         subtitle={
@@ -183,6 +184,16 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
               label="I agree to the terms and conditions"
               onToggle={() => setAgreed(v => !v)}
             />
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert(
+                  'Terms',
+                  'OfferBid is a campus marketplace. Meet in public, inspect items before paying, and never share PINs or OTP codes. WhatsApp contact unlocks only after both sides accept an offer.',
+                )
+              }
+              className="mt-1">
+              <Text className="text-xs font-semibold text-brand-blue">Read summary</Text>
+            </TouchableOpacity>
           </View>
           <AuthButton title="Create account" loading={loading} onPress={handleRegister} />
           <AuthFooterLink

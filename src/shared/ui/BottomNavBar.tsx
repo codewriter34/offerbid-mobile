@@ -1,7 +1,6 @@
-import React, {useEffect, useRef} from 'react';
-import {View, Text, TouchableOpacity, Animated} from 'react-native';
-import {useNavigation, useNavigationState} from '@react-navigation/native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import React, {useEffect, useState} from 'react';
+import {View, Text, TouchableOpacity} from 'react-native';
+import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {MainTabParamList} from '@app/navigation/types';
 import {useAuthStore} from '@features/auth/authStore';
 import {useBidStore} from '@features/bids/bidStore';
@@ -12,46 +11,18 @@ import {NavIcon, NavIconName} from './NavIcon';
 
 type TabKey = keyof MainTabParamList;
 
-const TAB_KEYS: TabKey[] = ['Explore', 'MyBids', 'Selling', 'Profile'];
-
 const TABS: Array<{
   tab: TabKey;
   label: string;
   icon: NavIconName;
 }> = [
   {tab: 'Explore', label: 'Explore', icon: 'explore'},
-  {tab: 'MyBids', label: 'My Bids', icon: 'bids'},
+  {tab: 'MyBids', label: 'My Offers', icon: 'bids'},
   {tab: 'Selling', label: 'Selling', icon: 'selling'},
   {tab: 'Profile', label: 'Profile', icon: 'profile'},
 ];
 
-function isTabKey(name: string | undefined): name is TabKey {
-  return !!name && (TAB_KEYS as string[]).includes(name);
-}
-
-function activeTabFromState(state: unknown): TabKey | undefined {
-  const s = state as
-    | {
-        index?: number;
-        routes?: Array<{name: string; state?: unknown}>;
-      }
-    | undefined;
-  if (!s?.routes?.length) return undefined;
-
-  const focused = s.routes[s.index ?? 0];
-  if (isTabKey(focused?.name)) return focused.name;
-
-  if (focused?.name === 'MainTabs') {
-    return activeTabFromState(focused.state) ?? 'Explore';
-  }
-
-  const tabs = s.routes.find(r => r.name === 'MainTabs');
-  return activeTabFromState(tabs?.state) ?? undefined;
-}
-
-export function BottomNavBar() {
-  const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
+export function BottomNavBar({state, navigation, insets}: BottomTabBarProps) {
   const user = useAuthStore(s => s.user);
   const counteredCount = useBidStore(
     s => s.myBids.filter(b => String(b.status).toUpperCase() === 'COUNTERED').length,
@@ -59,7 +30,15 @@ export function BottomNavBar() {
   const pendingIncoming = useBidStore(
     s => s.incomingBids.filter(b => String(b.status).toUpperCase() === 'PENDING').length,
   );
-  const active = useNavigationState(activeTabFromState);
+  const navActive = state.routes[state.index]?.name as TabKey;
+  const [pressedTab, setPressedTab] = useState<TabKey | null>(null);
+  const active = pressedTab ?? navActive;
+
+  useEffect(() => {
+    if (pressedTab && navActive === pressedTab) {
+      setPressedTab(null);
+    }
+  }, [navActive, pressedTab]);
 
   const goAuth = () => navigation.navigate('Auth', {screen: 'Login'});
 
@@ -68,7 +47,8 @@ export function BottomNavBar() {
       goAuth();
       return;
     }
-    navigation.navigate('MainTabs', {screen: tab});
+    setPressedTab(tab);
+    navigation.navigate(tab);
   };
 
   const onSell = () => {
@@ -87,9 +67,7 @@ export function BottomNavBar() {
     <View
       className="border-t border-slate-200 bg-white"
       style={{paddingBottom: Math.max(insets.bottom, 8), ...shadows.nav}}>
-      <View
-        className="flex-row items-end px-1"
-        style={{height: layout.navBarHeight}}>
+      <View className="flex-row items-end px-1" style={{height: layout.navBarHeight}}>
         <NavItem
           label={TABS[0].label}
           icon={TABS[0].icon}
@@ -103,11 +81,11 @@ export function BottomNavBar() {
           badge={counteredCount}
           onPress={() => goTab('MyBids')}
         />
-        <View className="w-[72px] items-center">
+        <View className="w-[72px] items-center justify-end pb-1">
           <TouchableOpacity
             onPress={onSell}
             activeOpacity={0.85}
-            className="-mt-7 items-center justify-center rounded-full bg-brand-blue"
+            className="-mt-6 items-center justify-center rounded-full bg-brand-blue"
             style={{
               width: layout.sellFabSize,
               height: layout.sellFabSize,
@@ -115,8 +93,10 @@ export function BottomNavBar() {
             }}
             accessibilityRole="button"
             accessibilityLabel="Sell">
-            <NavIcon name="plus" size={32} color={colors.white} />
+            <NavIcon name="plus" size={28} color={colors.white} />
           </TouchableOpacity>
+          <Text className="mt-0.5 text-[11px] font-semibold text-brand-gray">Sell</Text>
+          <View className="mt-1 h-1.5 w-1.5" />
         </View>
         <NavItem
           label={TABS[2].label}
@@ -150,27 +130,6 @@ function NavItem({
   onPress: () => void;
 }) {
   const color = active ? colors.nav.active : colors.nav.inactive;
-  const progress = useRef(new Animated.Value(active ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.spring(progress, {
-      toValue: active ? 1 : 0,
-      friction: 7,
-      tension: 140,
-      useNativeDriver: true,
-    }).start();
-  }, [active, progress]);
-
-  const iconScale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.08],
-  });
-  const pillScale = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.6, 1],
-  });
-  const pillOpacity = progress;
-  const dotScale = progress;
 
   return (
     <TouchableOpacity
@@ -179,13 +138,11 @@ function NavItem({
       accessibilityRole="button"
       accessibilityState={{selected: active}}>
       <View className="h-9 w-9 items-center justify-center">
-        <Animated.View
+        <View
           className="absolute h-9 w-9 rounded-full bg-[#DBEAFE]"
-          style={{opacity: pillOpacity, transform: [{scale: pillScale}]}}
+          style={{opacity: active ? 1 : 0}}
         />
-        <Animated.View style={{transform: [{scale: iconScale}]}}>
-          <NavIcon name={icon} size={22} color={color} filled={active} />
-        </Animated.View>
+        <NavIcon name={icon} size={22} color={color} filled={active} />
         {!!badge && badge > 0 && (
           <View className="absolute -right-1.5 -top-0.5 min-w-[16px] items-center rounded-full bg-brand-danger px-1">
             <Text className="text-[10px] font-bold text-white">
@@ -195,14 +152,14 @@ function NavItem({
         )}
       </View>
       <Text
-        className={`mt-0.5 text-nav font-semibold ${
+        className={`mt-0.5 text-[11px] font-semibold ${
           active ? 'text-brand-blue' : 'text-brand-gray'
         }`}>
         {label}
       </Text>
-      <Animated.View
+      <View
         className="mt-1 h-1.5 w-1.5 rounded-full bg-brand-blue"
-        style={{opacity: progress, transform: [{scale: dotScale}]}}
+        style={{opacity: active ? 1 : 0}}
       />
     </TouchableOpacity>
   );

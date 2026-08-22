@@ -1,31 +1,18 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  Pressable,
-  RefreshControl,
-  Dimensions,
-  Animated,
-} from 'react-native';
+import React, {useCallback, useState} from 'react';
+import {View, Text, FlatList, TouchableOpacity, RefreshControl, Alert} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {RootStackScreenProps} from '@app/navigation/types';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {useNotifications} from '@features/notifications/useNotifications';
 import {NotificationItem} from '@features/notifications/components/NotificationItem';
 import {EmptyState} from '@shared/ui/EmptyState';
 import {ErrorView} from '@shared/ui/ErrorView';
 import {LoadingSpinner} from '@shared/ui/LoadingSpinner';
-import {shadows} from '@shared/theme/shadows';
-import {AppIcon} from '@shared/ui/AppIcon';
-import {colors} from '@shared/theme/colors';
 import {listingIdFromPushData} from '@features/notifications/pushService';
 import {AppNotification} from '@shared/types';
 
 type Props = RootStackScreenProps<'Notifications'>;
-
-const PANEL_MAX = Dimensions.get('window').height * 0.72;
 
 export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
   const insets = useSafeAreaInsets();
@@ -40,24 +27,6 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
     deleteNotification,
   } = useNotifications();
   const [refreshing, setRefreshing] = useState(false);
-  const slide = useRef(new Animated.Value(-PANEL_MAX)).current;
-  const fade = useRef(new Animated.Value(0)).current;
-  const closing = useRef(false);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slide, {
-        toValue: 0,
-        duration: 280,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fade, slide]);
 
   useFocusEffect(
     useCallback(() => {
@@ -71,26 +40,6 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
     setRefreshing(false);
   }, [fetchNotifications]);
 
-  const close = () => {
-    if (closing.current) return;
-    closing.current = true;
-    Animated.parallel([
-      Animated.timing(slide, {
-        toValue: -PANEL_MAX,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fade, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start(({finished}) => {
-      if (finished) navigation.goBack();
-      else closing.current = false;
-    });
-  };
-
   const handleDeleteNotification = (notification: AppNotification) => {
     Alert.alert('Delete notification', 'Remove this notification?', [
       {text: 'Cancel', style: 'cancel'},
@@ -101,6 +50,7 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
       },
     ]);
   };
+
 
   const handleNotificationPress = (notification: AppNotification) => {
     if (!notification.read) {
@@ -114,86 +64,57 @@ export const NotificationCenterScreen: React.FC<Props> = ({navigation}) => {
       navigation.replace('ListingDetail', {listingId});
       return;
     }
-    close();
+    dismissScreen(navigation);
   };
 
   return (
-    <View className="flex-1">
-      <Animated.View className="absolute inset-0" style={{opacity: fade}}>
-        <Pressable className="flex-1 bg-black/40" onPress={close} />
-      </Animated.View>
-
-      <Animated.View
-        className="absolute left-0 right-0 top-0 overflow-hidden rounded-b-2xl bg-white"
-        style={[
-          shadows.dropdown,
-          {
-            paddingTop: insets.top,
-            maxHeight: PANEL_MAX,
-            transform: [{translateY: slide}],
-          },
-        ]}>
-        <View className="flex-row items-center justify-between px-4 pb-2 pt-3">
-          <Text className="text-[22px] font-extrabold text-brand-black">
-            Notifications
-          </Text>
-          <View className="flex-row items-center gap-2">
-            {unreadCount > 0 ? (
-              <TouchableOpacity
-                onPress={() => void markAllAsRead()}
-                className="rounded-full bg-[#E7F3FF] px-3 py-1.5">
-                <Text className="text-[13px] font-semibold text-brand-blue">
-                  Mark all read
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-            <TouchableOpacity
-              onPress={close}
-              className="h-9 w-9 items-center justify-center rounded-full bg-[#E4E6EB]"
-              accessibilityRole="button"
-              accessibilityLabel="Close notifications">
-              <AppIcon name="close" size={16} color={colors.brand.black} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {isLoading && notifications.length === 0 ? (
-          <View className="py-16">
-            <LoadingSpinner message="Loading notifications..." />
-          </View>
-        ) : error && notifications.length === 0 ? (
-          <View className="py-10">
-            <ErrorView message={error} onRetry={fetchNotifications} />
-          </View>
+    <View className="flex-1 bg-white" style={{paddingTop: insets.top}}>
+      <View className="flex-row items-center justify-between border-b border-slate-200 px-4 py-3">
+        <TouchableOpacity onPress={() => dismissScreen(navigation)} hitSlop={12}>
+          <Text className="text-base font-semibold text-brand-charcoal">Close</Text>
+        </TouchableOpacity>
+        <Text className="text-lg font-bold text-brand-black">Notifications</Text>
+        {unreadCount > 0 ? (
+          <TouchableOpacity onPress={() => void markAllAsRead()} hitSlop={8}>
+            <Text className="text-[13px] font-semibold text-brand-blue">Mark all</Text>
+          </TouchableOpacity>
         ) : (
-          <FlatList
-            data={notifications}
-            keyExtractor={item => item.id}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={['#2070C8']}
-              />
-            }
-            renderItem={({item}) => (
-              <NotificationItem
-                notification={item}
-                onPress={handleNotificationPress}
-                onLongPress={handleDeleteNotification}
-              />
-            )}
-            ListEmptyComponent={
-              <View className="py-10">
-                <EmptyState
-                  title="No notifications"
-                  message="You’re all caught up. Bid and listing updates will show up here."
-                />
-              </View>
-            }
-          />
+          <View className="w-14" />
         )}
-      </Animated.View>
+      </View>
+
+      {isLoading && notifications.length === 0 ? (
+        <LoadingSpinner message="Loading notifications..." />
+      ) : error && notifications.length === 0 ? (
+        <ErrorView message={error} onRetry={fetchNotifications} />
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={item => item.id}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#2070C8']}
+            />
+          }
+          renderItem={({item}) => (
+            <NotificationItem
+              notification={item}
+              onPress={handleNotificationPress}
+              onLongPress={handleDeleteNotification}
+            />
+          )}
+          ListEmptyComponent={
+            <View className="py-16">
+              <EmptyState
+                title="No notifications"
+                message="You’re all caught up. Offer and listing updates will show up here."
+              />
+            </View>
+          }
+        />
+      )}
     </View>
   );
 };

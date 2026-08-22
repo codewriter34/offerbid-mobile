@@ -105,11 +105,7 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen
           name="Notifications"
           component={NotificationCenterScreen}
-          options={{
-            presentation: 'transparentModal',
-            animation: 'none',
-            contentStyle: {backgroundColor: 'transparent'},
-          }}
+          options={modalScreenOptions}
         />
         <Stack.Screen
           name="Auth"

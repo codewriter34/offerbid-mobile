@@ -24,3 +24,27 @@ export function consumePendingPushListing() {
   pendingListingId = null;
   navigationRef.navigate('ListingDetail', {listingId});
 }
+
+type DismissableNav = {
+  canGoBack: () => boolean;
+  goBack: () => void;
+  getParent?: () => DismissableNav | undefined;
+  navigate: (name: 'MainTabs', params?: {screen: 'Explore'}) => void;
+};
+
+export function dismissScreen(navigation: DismissableNav) {
+  const parent = navigation.getParent?.();
+  if (parent?.canGoBack()) {
+    parent.goBack();
+    return;
+  }
+  if (navigation.canGoBack()) {
+    navigation.goBack();
+    return;
+  }
+  if (navigationRef.isReady()) {
+    navigationRef.navigate('MainTabs', {screen: 'Explore'});
+    return;
+  }
+  navigation.navigate('MainTabs', {screen: 'Explore'});
+}

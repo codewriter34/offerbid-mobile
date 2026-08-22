@@ -1,5 +1,5 @@
 import React, {useEffect, useCallback, useMemo, useState} from 'react';
-import {View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, Image} from 'react-native';
+import {View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert} from 'react-native';
 import {MainTabScreenProps} from '@app/navigation/types';
 import {useBids} from '@features/bids/useBids';
 import {useMyListings} from '@features/listings/useMyListings';
@@ -18,16 +18,26 @@ import {FilterChip} from '@shared/ui/FilterChip';
 import {formatPrice} from '@shared/lib/formatters';
 import {shadows} from '@shared/theme/shadows';
 import {AppIcon} from '@shared/ui/AppIcon';
+import {MediaThumb} from '@shared/ui/CachedImage';
 import {colors} from '@shared/theme/colors';
 import {Bid, Listing} from '@shared/types';
 
 type Props = MainTabScreenProps<'Selling'>;
 type ListingFilter = 'all' | 'active' | 'sold' | 'closed';
+type OfferFilter = 'all' | 'pending' | 'accepted' | 'countered' | 'closed';
 
 const LISTING_FILTERS: Array<{key: ListingFilter; label: string; color: string}> = [
   {key: 'all', label: 'All', color: '#2070C8'},
   {key: 'active', label: 'Active', color: '#2070C8'},
   {key: 'sold', label: 'Sold', color: '#059669'},
+  {key: 'closed', label: 'Closed', color: '#64748B'},
+];
+
+const OFFER_FILTERS: Array<{key: OfferFilter; label: string; color: string}> = [
+  {key: 'all', label: 'All', color: '#2070C8'},
+  {key: 'pending', label: 'Pending', color: '#B45309'},
+  {key: 'accepted', label: 'Accepted', color: '#059669'},
+  {key: 'countered', label: 'Countered', color: '#1D4ED8'},
   {key: 'closed', label: 'Closed', color: '#64748B'},
 ];
 
@@ -38,26 +48,35 @@ function listingGroup(status: string): Exclude<ListingFilter, 'all'> {
   return 'closed';
 }
 
+function offerGroup(status: string): Exclude<OfferFilter, 'all'> {
+  const s = String(status).toUpperCase();
+  if (s === 'PENDING') return 'pending';
+  if (s === 'ACCEPTED') return 'accepted';
+  if (s === 'COUNTERED') return 'countered';
+  return 'closed';
+}
+
 function StatCard({
   value,
   label,
-  hint,
   bg,
   fg,
 }: {
   value: number;
   label: string;
-  hint: string;
   bg: string;
   fg: string;
 }) {
   return (
-    <View className="min-w-0 flex-1 rounded-2xl px-3 py-3" style={{backgroundColor: bg}}>
-      <Text className="text-[22px] font-bold" style={{color: fg}}>
+    <View className="min-w-0 flex-1 items-center rounded-xl px-1 py-2.5" style={{backgroundColor: bg}}>
+      <Text className="text-[18px] font-bold" style={{color: fg}}>
         {value}
       </Text>
-      <Text className="mt-0.5 text-[13px] font-semibold text-brand-black">{label}</Text>
-      <Text className="mt-0.5 text-[11px] text-brand-gray">{hint}</Text>
+      <Text
+        className="mt-0.5 text-center text-[10px] font-semibold leading-3 text-brand-black"
+        numberOfLines={2}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -69,7 +88,7 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
   const {myListings, fetchMyListings} = useMyListings();
   const [refreshing, setRefreshing] = useState(false);
   const [listingFilter, setListingFilter] = useState<ListingFilter>('all');
-  const [showAllOffers, setShowAllOffers] = useState(false);
+  const [offerFilter, setOfferFilter] = useState<OfferFilter>('all');
 
   useRealtimeUser(user?.id);
 
@@ -110,7 +129,18 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
     return myListings.filter(listing => listingGroup(listing.status) === listingFilter);
   }, [myListings, listingFilter]);
 
-  const visibleOffers = showAllOffers ? incomingBids : incomingBids.slice(0, 3);
+  const visibleOffers = useMemo(() => {
+    if (offerFilter === 'all') return incomingBids;
+    return incomingBids.filter(bid => offerGroup(bid.status) === offerFilter);
+  }, [incomingBids, offerFilter]);
+
+  const offerCounts = useMemo(() => {
+    const next = {all: incomingBids.length, pending: 0, accepted: 0, countered: 0, closed: 0};
+    incomingBids.forEach(bid => {
+      next[offerGroup(bid.status)] += 1;
+    });
+    return next;
+  }, [incomingBids]);
 
   const handleAccept = async (bidId: string) => {
     Alert.alert(
@@ -158,6 +188,7 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
       bidId,
       currentAmount: bid?.amount ?? 0,
       listingTitle: bid?.listingTitle ?? 'Listing',
+      currency: bid?.currency,
     });
   };
 
@@ -231,37 +262,44 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
               colors={['#2070C8']}
             />
           }>
-          <View className="mb-3 flex-row gap-3">
+          <View className="mb-3 flex-row gap-2">
             <StatCard
               value={pendingOffers.length}
-              label="Incoming offers"
-              hint="Needs your action"
+              label="Offers"
               bg="#FEF3C7"
               fg="#B45309"
             />
             <StatCard
               value={activeListings.length}
-              label="Active listings"
-              hint="Live on OfferBid"
+              label="Active"
               bg="#DBEAFE"
               fg="#2070C8"
             />
-          </View>
-          <View className="mb-5 flex-row gap-3">
             <StatCard
               value={soldListings.length}
-              label="Completed sales"
-              hint="Sold listings"
+              label="Sold"
               bg="#D1FAE5"
               fg="#047857"
             />
             <StatCard
               value={acceptedOffers.length}
-              label="Accepted offers"
-              hint="Ready to chat"
+              label="Accepted"
               bg="#F1F5F9"
               fg="#334155"
             />
+          </View>
+
+          <View className="mb-3 flex-row flex-wrap gap-2">
+            {OFFER_FILTERS.map(item => (
+              <FilterChip
+                key={item.key}
+                label={item.label}
+                count={offerCounts[item.key]}
+                color={item.color}
+                active={offerFilter === item.key}
+                onPress={() => setOfferFilter(item.key)}
+              />
+            ))}
           </View>
 
           <View className="mb-2 flex-row items-center justify-between">
@@ -275,19 +313,14 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
                 </View>
               ) : null}
             </View>
-            {incomingBids.length > 3 ? (
-              <TouchableOpacity onPress={() => setShowAllOffers(value => !value)}>
-                <Text className="text-[13px] font-semibold text-brand-blue">
-                  {showAllOffers ? 'Show less' : 'View all'}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
 
           {visibleOffers.length === 0 ? (
             <View className="mb-5 rounded-2xl border border-slate-200 bg-white px-4 py-6">
               <Text className="text-center text-sm text-brand-gray">
-                When buyers make offers, they will show up here.
+                {offerFilter === 'all'
+                  ? 'When buyers make offers, they will show up here.'
+                  : 'No offers match this filter.'}
               </Text>
             </View>
           ) : (
@@ -382,13 +415,12 @@ function ListingRow({
       activeOpacity={0.75}
       className="mb-3 flex-row items-center rounded-2xl border border-slate-200 bg-white px-3 py-3"
       style={shadows.card}>
-      {image ? (
-        <Image source={{uri: image}} className="h-14 w-14 rounded-xl bg-slate-100" />
-      ) : (
-        <View className="h-14 w-14 items-center justify-center rounded-xl bg-slate-100">
-          <Text className="text-[10px] font-semibold text-brand-gray">No photo</Text>
-        </View>
-      )}
+      <MediaThumb
+        uri={image}
+        recyclingKey={listing.id}
+        className="h-14 w-14 rounded-xl"
+        iconSize={16}
+      />
       <View className="ml-3 min-w-0 flex-1">
         <Text className="text-[15px] font-bold text-brand-black" numberOfLines={1}>
           {listing.title}
