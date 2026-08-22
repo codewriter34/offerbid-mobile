@@ -99,6 +99,10 @@ module.exports = {
         process.env.SOCKET_URL ??
         process.env.EXPO_PUBLIC_SOCKET_URL ??
         'wss://offerbid-api.onrender.com/realtime',
+      webBaseUrl:
+        process.env.WEB_BASE_URL ??
+        process.env.EXPO_PUBLIC_WEB_BASE_URL ??
+        'https://offerbid.co',
       uploadProvider:
         process.env.UPLOAD_PROVIDER ??
         process.env.EXPO_PUBLIC_UPLOAD_PROVIDER ??

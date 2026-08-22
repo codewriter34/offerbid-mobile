@@ -1,4 +1,6 @@
 import {Alert, Linking} from 'react-native';
+import {contactSeller} from '@features/listings/listingService';
+import {Bid} from '@shared/types';
 
 export interface WhatsAppMessageParams {
   sellerPhone: string;
@@ -34,7 +36,7 @@ export async function openWhatsAppUrl(url: string): Promise<boolean> {
   if (!trimmed) {
     Alert.alert(
       'WhatsApp unavailable',
-      'The chat link is not ready yet. Open the accepted offer again in a moment.',
+      'The chat link is missing for this deal. Pull to refresh, then try again.',
     );
     return false;
   }
@@ -44,7 +46,7 @@ export async function openWhatsAppUrl(url: string): Promise<boolean> {
   } catch {
     Alert.alert(
       'WhatsApp Not Available',
-      'WhatsApp is not installed on this device. Please install it to contact the seller.',
+      'WhatsApp is not installed on this device. Please install it to continue the chat.',
     );
     return false;
   }
@@ -54,11 +56,37 @@ export async function openDealWhatsApp(url?: string | null): Promise<boolean> {
   if (!url?.trim()) {
     Alert.alert(
       'WhatsApp unavailable',
-      'The chat link is not ready yet. Open the accepted offer again in a moment.',
+      'The chat link is missing for this deal. Pull to refresh, then try again.',
     );
     return false;
   }
   return openWhatsAppUrl(url);
+}
+
+/** Prefer the bid's stored link; otherwise ask the API for a contact link. */
+export async function openAcceptedDealWhatsApp(
+  bid: Bid,
+  listingId?: string,
+): Promise<boolean> {
+  if (bid.whatsappUrl?.trim()) {
+    return openWhatsAppUrl(bid.whatsappUrl);
+  }
+  const id = listingId || bid.listingId;
+  if (id) {
+    try {
+      const url = await contactSeller(id);
+      return openWhatsAppUrl(url);
+    } catch (err: any) {
+      Alert.alert(
+        'WhatsApp unavailable',
+        err?.response?.data?.message ??
+          err?.message ??
+          'Could not open the chat link. Try again in a moment.',
+      );
+      return false;
+    }
+  }
+  return openDealWhatsApp(null);
 }
 
 export async function openWhatsApp(
