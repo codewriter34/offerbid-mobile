@@ -26,12 +26,33 @@ export const useBidStore = create<BidState>(set => ({
   isLoading: false,
   error: null,
 
-  setMyBids: myBids => set({myBids}),
-  setIncomingBids: incomingBids => set({incomingBids}),
-  setListingBids: (listingId, bids) =>
+  setMyBids: myBids =>
     set(state => ({
-      listingBids: {...state.listingBids, [listingId]: bids},
+      myBids: myBids.map(bid => {
+        const existing = state.myBids.find(item => item.id === bid.id);
+        return existing ? mergeBid(existing, bid) : bid;
+      }),
     })),
+  setIncomingBids: incomingBids =>
+    set(state => ({
+      incomingBids: incomingBids.map(bid => {
+        const existing = state.incomingBids.find(item => item.id === bid.id);
+        return existing ? mergeBid(existing, bid) : bid;
+      }),
+    })),
+  setListingBids: (listingId, bids) =>
+    set(state => {
+      const existing = state.listingBids[listingId] ?? [];
+      return {
+        listingBids: {
+          ...state.listingBids,
+          [listingId]: bids.map(bid => {
+            const prev = existing.find(item => item.id === bid.id);
+            return prev ? mergeBid(prev, bid) : bid;
+          }),
+        },
+      };
+    }),
 
   updateBid: (bidId, partial) =>
     set(state => {

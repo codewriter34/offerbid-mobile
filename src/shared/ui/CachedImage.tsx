@@ -1,5 +1,11 @@
-import React from 'react';
-import {Text, View, ViewStyle, StyleProp} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {
+  ActivityIndicator,
+  Text,
+  View,
+  ViewStyle,
+  StyleProp,
+} from 'react-native';
 import {Image, ImageProps} from 'expo-image';
 import {cssInterop} from 'nativewind';
 import {AppIcon} from './AppIcon';
@@ -29,6 +35,9 @@ export function CachedImage({
   transition = 180,
   contentFit = 'cover',
   source,
+  onLoadStart,
+  onLoad,
+  onError,
   ...props
 }: ImageProps) {
   const resolved = asImageSource(source);
@@ -39,6 +48,9 @@ export function CachedImage({
       transition={transition}
       contentFit={contentFit}
       source={resolved}
+      onLoadStart={onLoadStart}
+      onLoad={onLoad}
+      onError={onError}
       {...props}
     />
   );
@@ -57,7 +69,15 @@ export function MediaThumb({
   style?: StyleProp<ViewStyle>;
   iconSize?: number;
 }) {
-  if (!uri) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(
+    uri ? 'loading' : 'idle',
+  );
+
+  useEffect(() => {
+    setStatus(uri ? 'loading' : 'idle');
+  }, [uri, recyclingKey]);
+
+  if (!uri || status === 'error') {
     return (
       <View
         className={`items-center justify-center bg-slate-100 ${className ?? ''}`}
@@ -69,12 +89,21 @@ export function MediaThumb({
 
   return (
     <View className={`overflow-hidden bg-slate-100 ${className ?? ''}`} style={style}>
+      {status === 'loading' ? (
+        <View className="absolute inset-0 z-10 items-center justify-center bg-slate-100">
+          <ActivityIndicator size="small" color={colors.brand.blue} />
+        </View>
+      ) : null}
       <CachedImage
+        key={recyclingKey ?? uri}
         source={uri}
         recyclingKey={recyclingKey}
         className="h-full w-full"
         contentFit="cover"
         accessibilityIgnoresInvertColors
+        onLoadStart={() => setStatus('loading')}
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('error')}
       />
     </View>
   );
@@ -92,7 +121,15 @@ export function AvatarImage({
   className?: string;
 }) {
   const initial = (name?.trim()?.charAt(0) ?? '?').toUpperCase();
-  if (!uri) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>(
+    uri ? 'loading' : 'idle',
+  );
+
+  useEffect(() => {
+    setStatus(uri ? 'loading' : 'idle');
+  }, [uri]);
+
+  if (!uri || status === 'error') {
     return (
       <View
         className={`items-center justify-center rounded-full bg-brand-black ${className ?? ''}`}
@@ -105,14 +142,28 @@ export function AvatarImage({
       </View>
     );
   }
+
   return (
-    <CachedImage
-      source={uri}
-      recyclingKey={uri}
-      className={`rounded-full ${className ?? ''}`}
-      style={{width: size, height: size}}
-      contentFit="cover"
-      accessibilityLabel={name ?? 'Profile photo'}
-    />
+    <View
+      className={`overflow-hidden rounded-full bg-slate-200 ${className ?? ''}`}
+      style={{width: size, height: size}}>
+      {status === 'loading' ? (
+        <View className="absolute inset-0 z-10 items-center justify-center">
+          <ActivityIndicator size="small" color={colors.brand.blue} />
+        </View>
+      ) : null}
+      <CachedImage
+        key={uri}
+        source={uri}
+        recyclingKey={uri}
+        className="h-full w-full rounded-full"
+        style={{width: size, height: size}}
+        contentFit="cover"
+        accessibilityLabel={name ?? 'Profile photo'}
+        onLoadStart={() => setStatus('loading')}
+        onLoad={() => setStatus('loaded')}
+        onError={() => setStatus('error')}
+      />
+    </View>
   );
 }
