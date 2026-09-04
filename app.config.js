@@ -80,6 +80,8 @@ module.exports = {
         {
           icon: './assets/notification-icon.png',
           color: '#0052FF',
+          mode: 'production',
+          enableBackgroundRemoteNotifications: true,
         },
       ],
       '@react-native-firebase/app',

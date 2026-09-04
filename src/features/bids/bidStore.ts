@@ -71,8 +71,7 @@ export const useBidStore = create<BidState>(set => ({
 
   addBid: bid =>
     set(state => {
-      const sameOffer = (item: Bid) =>
-        item.id === bid.id || (bid.listingId && item.listingId === bid.listingId);
+      const sameOffer = (item: Bid) => item.id === bid.id;
       const merge = (list: Bid[]) =>
         list.some(sameOffer)
           ? list.map(item => (sameOffer(item) ? mergeBid(item, bid) : item))
