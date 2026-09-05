@@ -11,6 +11,8 @@ export const FEED_CACHE_FRESH_MS = 90_000;
 export interface FeedFilterKey {
   category: string | null;
   search: string;
+  city?: string | null;
+  location?: string | null;
 }
 
 export interface CachedFeed {
@@ -24,6 +26,8 @@ export function feedCacheKey(filters: FeedFilterKey): string {
   const parts: string[] = [];
   if (filters.category) parts.push(`cat:${filters.category}`);
   if (search.length >= 2) parts.push(`q:${search}`);
+  if (filters.city) parts.push(`city:${filters.city}`);
+  if (filters.location) parts.push(`loc:${filters.location}`);
   return parts.length ? parts.join('|') : 'all';
 }
 

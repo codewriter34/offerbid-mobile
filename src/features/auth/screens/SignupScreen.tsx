@@ -29,6 +29,9 @@ import {
 type Props = AuthStackScreenProps<'Signup'>;
 type Step = 'form' | 'otp';
 
+/** Flip to true when Google Sign-In UI should ship again. */
+const SHOW_GOOGLE_AUTH = false;
+
 export const SignupScreen: React.FC<Props> = ({navigation}) => {
   const {signIn, register, confirmOtp, sendOtp} = useAuth();
 
@@ -134,7 +137,9 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
 
       {step === 'form' ? (
         <>
-          <GoogleButton label="Sign up with Google" loading={loading} onPress={handleGoogle} />
+          {SHOW_GOOGLE_AUTH ? (
+            <GoogleButton label="Sign up with Google" loading={loading} onPress={handleGoogle} />
+          ) : null}
           <AuthField
             label="Full name"
             value={fullName}

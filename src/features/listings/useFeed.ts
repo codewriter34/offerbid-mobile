@@ -7,12 +7,14 @@ import {
   getCachedFeed,
   persistFeedPage,
 } from '@shared/lib/feedStorage';
+import {useAuthStore} from '@features/auth/authStore';
 
 export function useFeed() {
   const store = useListingStore();
   const requestRef = useRef(0);
 
   const buildParams = (page: number, filters: typeof store.filters) => {
+    const hub = useAuthStore.getState().selectedHub;
     const params: Record<string, unknown> = {
       page,
       limit: PAGE_SIZE,
@@ -21,13 +23,24 @@ export function useFeed() {
     if (filters.category) params.category = filters.category;
     const search = filters.search.trim();
     if (search.length >= 2) params.q = search;
+    if (hub?.city) params.city = hub.city;
+    if (hub?.neighborhood) params.location = hub.neighborhood;
     return params;
+  };
+
+  const cacheFilters = (filters: typeof store.filters) => {
+    const hub = useAuthStore.getState().selectedHub;
+    return {
+      ...filters,
+      city: hub?.city ?? null,
+      location: hub?.neighborhood ?? null,
+    };
   };
 
   const fetchListings = useCallback(async (refresh = false) => {
     const current = useListingStore.getState();
     const filters = current.filters;
-    const key = feedCacheKey(filters);
+    const key = feedCacheKey(cacheFilters(filters));
     const requestId = ++requestRef.current;
 
     if (!refresh) {
@@ -61,12 +74,14 @@ export function useFeed() {
     try {
       const items = await fetchFeed(buildParams(1, filters));
       if (requestId !== requestRef.current) return;
-      if (feedCacheKey(useListingStore.getState().filters) !== key) return;
+      if (feedCacheKey(cacheFilters(useListingStore.getState().filters)) !== key) {
+        return;
+      }
       current.setListings(items);
       current.setHasMore(items.length === PAGE_SIZE);
       current.setPage(1);
       current.setError(null);
-      persistFeedPage(filters, items, items.length === PAGE_SIZE);
+      persistFeedPage(cacheFilters(filters), items, items.length === PAGE_SIZE);
     } catch (err: any) {
       if (requestId !== requestRef.current) return;
       if (useListingStore.getState().listings.length === 0) {
@@ -87,10 +102,12 @@ export function useFeed() {
     const nextPage = current.page + 1;
     current.setPage(nextPage);
     const filters = current.filters;
-    const key = feedCacheKey(filters);
+    const key = feedCacheKey(cacheFilters(filters));
     try {
       const items = await fetchFeed(buildParams(nextPage, filters));
-      if (feedCacheKey(useListingStore.getState().filters) !== key) return;
+      if (feedCacheKey(cacheFilters(useListingStore.getState().filters)) !== key) {
+        return;
+      }
       current.appendListings(items);
       current.setHasMore(items.length === PAGE_SIZE);
     } catch (err: any) {

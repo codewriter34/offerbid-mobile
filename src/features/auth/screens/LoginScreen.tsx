@@ -19,6 +19,9 @@ import {
 type Props = AuthStackScreenProps<'Login'>;
 type Step = 'login' | 'forgot' | 'reset';
 
+/** Flip to true when Google Sign-In UI should ship again. */
+const SHOW_GOOGLE_AUTH = false;
+
 export const LoginScreen: React.FC<Props> = ({navigation}) => {
   const {
     signIn,
@@ -114,7 +117,7 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
       onClose={() => dismissScreen(navigation)}>
       <AuthHeading title={heading.title} subtitle={heading.sub} centered={step === 'forgot'} />
 
-      {step === 'login' ? (
+      {SHOW_GOOGLE_AUTH && step === 'login' ? (
         <GoogleButton label="Continue with Google" loading={loading} onPress={handleGoogle} />
       ) : null}
 
