@@ -10,12 +10,14 @@ export type RootStackParamList = {
   CreateListing: undefined;
   SubmitBid: {listingId: string; listingTitle: string; minBid: number; startingPrice: number};
   CounterBid: {bidId: string; currentAmount: number; listingTitle: string};
+  Thread: {conversationId: string};
 };
 
 export type MainTabParamList = {
   Feed: undefined;
   MyBids: undefined;
   BidDashboard: undefined;
+  Inbox: undefined;
   Notifications: undefined;
   Profile: undefined;
 };

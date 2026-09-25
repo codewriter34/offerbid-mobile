@@ -8,7 +8,8 @@ export type SocketEvent =
   | 'bid:new'
   | 'bid:updated'
   | 'listing:updated'
-  | 'notification:new';
+  | 'notification:new'
+  | 'chat:message';
 
 interface SocketCallbacks {
   onConnect?: () => void;
@@ -84,6 +85,26 @@ export function joinRoom(room: string): void {
 
 export function leaveRoom(room: string): void {
   socket?.emit('leave', room);
+}
+
+// Chat uses its own named events (rather than the generic join/leave room
+// pair above) per the realtime gateway's contract: emitting
+// 'subscribeToConversation'/'unsubscribeFromConversation' with an
+// {conversationId} payload, acked with {ok, conversationId}.
+export function subscribeToConversation(
+  conversationId: string,
+  onAck?: (ack: {ok: boolean; conversationId: string}) => void,
+): void {
+  if (!socket) return;
+  if (onAck) {
+    socket.emit('subscribeToConversation', {conversationId}, onAck);
+  } else {
+    socket.emit('subscribeToConversation', {conversationId});
+  }
+}
+
+export function unsubscribeFromConversation(conversationId: string): void {
+  socket?.emit('unsubscribeFromConversation', {conversationId});
 }
 
 export function disconnectSocket(): void {

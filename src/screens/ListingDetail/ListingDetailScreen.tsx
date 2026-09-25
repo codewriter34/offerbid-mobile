@@ -14,8 +14,10 @@ import {RootStackScreenProps} from '../../types/navigation';
 import {useListings} from '../../hooks/useListings';
 import {useBids} from '../../hooks/useBids';
 import {useRealtimeBids} from '../../hooks/useRealtimeBids';
+import {useStartConversation} from '../../hooks/useConversations';
 import {useAuthStore} from '../../store/authStore';
 import {openWhatsApp} from '../../services/whatsappBridge';
+import {PeerChatUnavailableError} from '../../services/chatService';
 import {formatPrice, formatRelativeTime} from '../../utils/formatters';
 import {LoadingSpinner} from '../../components/LoadingSpinner';
 import {ErrorView} from '../../components/ErrorView';
@@ -39,6 +41,8 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   const user = useAuthStore(s => s.user);
   const selectedHub = useAuthStore(s => s.selectedHub);
   const [imageIndex, setImageIndex] = useState(0);
+  const startConversation = useStartConversation();
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   useRealtimeBids(listingId);
 
@@ -83,6 +87,28 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
       currentAmount: bid.amount,
       listingTitle: currentListing.title,
     });
+  };
+
+  // "Message seller" entry point (new): starts (or resumes, per the
+  // endpoint's idempotency) a 1:1 end-to-end-encrypted chat conversation for
+  // this listing and jumps to the Thread screen. This is separate from —
+  // and does not replace — handleWhatsApp below, which is the
+  // accepted-deal WhatsApp confirmation flow tied to a specific bid.
+  const handleMessageSeller = async () => {
+    if (!currentListing) return;
+    setIsStartingChat(true);
+    try {
+      const conversation = await startConversation(currentListing.id);
+      navigation.navigate('Thread', {conversationId: conversation.id});
+    } catch (err) {
+      const message =
+        err instanceof PeerChatUnavailableError
+          ? err.message
+          : (err as any)?.response?.data?.message ?? 'Could not start chat';
+      Alert.alert('Message seller', message);
+    } finally {
+      setIsStartingChat(false);
+    }
   };
 
   const handleWhatsApp = (bid: Bid) => {
@@ -193,6 +219,18 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
               })
             }
             variant="primary"
+            size="lg"
+            fullWidth
+            style={styles.bidButton}
+          />
+        )}
+
+        {!isSeller && (
+          <Button
+            title="Message Seller"
+            onPress={handleMessageSeller}
+            loading={isStartingChat}
+            variant="outline"
             size="lg"
             fullWidth
             style={styles.bidButton}

@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Switch,
 } from 'react-native';
 import {MainTabScreenProps} from '../../types/navigation';
 import {useAuth} from '../../hooks/useAuth';
 import {useListings} from '../../hooks/useListings';
 import {useAuthStore} from '../../store/authStore';
+import {updateProfile} from '../../services/userService';
 import {MAX_ACTIVE_LISTINGS_UNVERIFIED} from '../../config/hubs';
 import {ListingCard} from '../../components/ListingCard';
 import {EmptyState} from '../../components/EmptyState';
@@ -24,11 +26,30 @@ type Props = MainTabScreenProps<'Profile'>;
 export const ProfileScreen: React.FC<Props> = ({navigation}) => {
   const {user, signOut} = useAuth();
   const selectedHub = useAuthStore(s => s.selectedHub);
+  const updateUser = useAuthStore(s => s.updateUser);
   const {myListings, fetchMyListings} = useListings();
+  const [isSavingChatVisibility, setIsSavingChatVisibility] = useState(false);
 
   useEffect(() => {
     fetchMyListings();
   }, []);
+
+  const handleToggleShowPhoneInChat = async (value: boolean) => {
+    // Optimistic — flip immediately, roll back if the PATCH fails.
+    updateUser({showPhoneInChat: value});
+    setIsSavingChatVisibility(true);
+    try {
+      await updateProfile({showPhoneInChat: value});
+    } catch (err: any) {
+      updateUser({showPhoneInChat: !value});
+      Alert.alert(
+        'Could not update setting',
+        err.response?.data?.message ?? 'Please try again.',
+      );
+    } finally {
+      setIsSavingChatVisibility(false);
+    }
+  };
 
   const activeListings = myListings.filter(l => l.status === 'active');
   const soldListings = myListings.filter(l => l.status === 'sold');
@@ -40,8 +61,17 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
+          // signOut() flips authStore's isAuthenticated to false, which
+          // RootNavigator already reacts to by swapping in the Auth screen
+          // (see its `!isAuthenticated ? <Auth /> : ...` branch) — no
+          // explicit navigation is needed. (The previous explicit
+          // `navigation.reset({routes: [{name: 'Auth'}]})` call here was
+          // pre-existing but didn't type-check — 'Auth' lives on
+          // RootStackParamList, not this screen's MainTabParamList — this
+          // was only ever masked by this sandbox's incomplete
+          // @react-navigation type declarations, unrelated to the chat
+          // feature; fixed opportunistically while touching this file.)
           await signOut();
-          navigation.reset({index: 0, routes: [{name: 'Auth'}]});
         },
       },
     ]);
@@ -149,6 +179,25 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         )}
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Chat Settings</Text>
+        <View style={styles.settingRow}>
+          <View style={styles.settingTextBlock}>
+            <Text style={styles.settingLabel}>Show phone number in chat</Text>
+            <Text style={styles.settingHint}>
+              Lets people you're chatting with see your phone number and
+              WhatsApp link. Off by default.
+            </Text>
+          </View>
+          <Switch
+            value={Boolean(user?.showPhoneInChat)}
+            onValueChange={handleToggleShowPhoneInChat}
+            disabled={isSavingChatVisibility}
+            trackColor={{true: colors.gradientStart, false: colors.border}}
+          />
+        </View>
+      </View>
+
       <View style={styles.actions}>
         <Button
           title="Change Location"
@@ -241,6 +290,16 @@ const styles = StyleSheet.create({
   },
   section: {padding: spacing.md},
   sectionTitle: {...typography.h3, color: colors.text.primary, marginBottom: spacing.md},
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+  },
+  settingTextBlock: {flex: 1, marginRight: spacing.md},
+  settingLabel: {...typography.body, fontWeight: '600', color: colors.text.primary},
+  settingHint: {...typography.caption, color: colors.text.secondary, marginTop: spacing.xs},
   actions: {padding: spacing.md, paddingBottom: spacing.xxl},
   actionButton: {marginBottom: spacing.sm},
 });

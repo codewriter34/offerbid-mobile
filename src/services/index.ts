@@ -15,6 +15,8 @@ export {
   emitEvent,
   joinRoom,
   leaveRoom,
+  subscribeToConversation,
+  unsubscribeFromConversation,
 } from './socketClient';
 export {
   configureCloudinary,
@@ -30,6 +32,23 @@ export {
   onNotificationEvent,
   setupBackgroundHandler,
   onFCMTokenRefresh,
+  conversationIdFromPushData,
+  listingIdFromPushData,
+  getInitialPushData,
 } from './notifeeService';
-export {buildWhatsAppUrl, openWhatsApp} from './whatsappBridge';
+export {buildWhatsAppUrl, openWhatsApp, openWhatsAppUrl} from './whatsappBridge';
 export type {WhatsAppMessageParams} from './whatsappBridge';
+export {updateProfile} from './userService';
+export {
+  uploadDeviceKeys,
+  getMyKeys,
+  ensureChatKeysReady,
+  sendMessage as sendChatMessage,
+  decryptMessage,
+  listConversations,
+  createConversation,
+  getConversation,
+  listMessages,
+  markConversationRead,
+  PeerChatUnavailableError,
+} from './chatService';

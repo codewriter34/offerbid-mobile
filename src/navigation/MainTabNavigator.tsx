@@ -6,8 +6,10 @@ import {FeedScreen} from '../screens/Feed/FeedScreen';
 import {MyBidsScreen} from '../screens/MyBids/MyBidsScreen';
 import {BidDashboardScreen} from '../screens/BidDashboard/BidDashboardScreen';
 import {NotificationCenterScreen} from '../screens/NotificationCenter/NotificationCenterScreen';
+import {InboxScreen} from '../screens/Inbox/InboxScreen';
 import {ProfileScreen} from '../screens/Profile/ProfileScreen';
 import {useNotificationStore} from '../store/notificationStore';
+import {useChatStore} from '../store/chatStore';
 import {colors} from '../theme/colors';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -17,6 +19,7 @@ function TabIcon({label, focused}: {label: string; focused: boolean}) {
     Feed: '🏠',
     'My Bids': '💰',
     Dashboard: '📋',
+    Chats: '💬',
     Alerts: '🔔',
     Profile: '👤',
   };
@@ -29,6 +32,8 @@ function TabIcon({label, focused}: {label: string; focused: boolean}) {
 
 export const MainTabNavigator: React.FC = () => {
   const unreadCount = useNotificationStore(s => s.unreadCount);
+  const conversations = useChatStore(s => s.conversations);
+  const unreadChatCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
     <Tab.Navigator
@@ -48,6 +53,7 @@ export const MainTabNavigator: React.FC = () => {
             Feed: 'Feed',
             MyBids: 'My Bids',
             BidDashboard: 'Dashboard',
+            Inbox: 'Chats',
             Notifications: 'Alerts',
             Profile: 'Profile',
           };
@@ -64,6 +70,21 @@ export const MainTabNavigator: React.FC = () => {
         name="BidDashboard"
         component={BidDashboardScreen}
         options={{title: 'Dashboard'}}
+      />
+      <Tab.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{
+          title: 'Chats',
+          tabBarBadge: unreadChatCount > 0 ? unreadChatCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.error,
+            fontSize: 10,
+            minWidth: 18,
+            height: 18,
+            lineHeight: 18,
+          },
+        }}
       />
       <Tab.Screen
         name="Notifications"

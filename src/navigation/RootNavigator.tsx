@@ -10,7 +10,9 @@ import {ListingDetailScreen} from '../screens/ListingDetail/ListingDetailScreen'
 import {CreateListingScreen} from '../screens/CreateListing/CreateListingScreen';
 import {SubmitBidScreen} from '../screens/SubmitBid/SubmitBidScreen';
 import {CounterBidScreen} from '../screens/CounterBid/CounterBidScreen';
+import {ThreadScreen} from '../screens/Thread/ThreadScreen';
 import {LoadingSpinner} from '../components/LoadingSpinner';
+import {navigationRef, flushPendingPushNavigation} from './navigationRef';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -24,7 +26,7 @@ export const RootNavigator: React.FC = () => {
   const needsHub = isAuthenticated && !user?.hub_id;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef} onReady={flushPendingPushNavigation}>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthScreen} />
@@ -52,6 +54,7 @@ export const RootNavigator: React.FC = () => {
               component={CounterBidScreen}
               options={{presentation: 'modal'}}
             />
+            <Stack.Screen name="Thread" component={ThreadScreen} />
             <Stack.Screen name="HubSelect" component={HubSelectScreen} />
           </>
         )}

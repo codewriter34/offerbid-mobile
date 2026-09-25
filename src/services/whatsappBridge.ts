@@ -32,13 +32,20 @@ export function buildWhatsAppUrl(params: WhatsAppMessageParams): string {
 export async function openWhatsApp(
   params: WhatsAppMessageParams,
 ): Promise<boolean> {
-  const url = buildWhatsAppUrl(params);
+  return openWhatsAppUrl(buildWhatsAppUrl(params));
+}
+
+// Opens an already-built wa.me URL as-is — used by the chat Thread screen's
+// "Open WhatsApp" button, which is driven by the chat API's
+// `peer.whatsappUrl` field (only present when the peer has opted in via
+// showPhoneInChat) rather than the accepted-deal contactSeller() flow above.
+export async function openWhatsAppUrl(url: string): Promise<boolean> {
   const canOpen = await Linking.canOpenURL(url);
 
   if (!canOpen) {
     Alert.alert(
       'WhatsApp Not Available',
-      'WhatsApp is not installed on this device. Please install it to contact the seller.',
+      'WhatsApp is not installed on this device.',
     );
     return false;
   }

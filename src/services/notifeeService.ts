@@ -92,6 +92,31 @@ export function onNotificationEvent(
   });
 }
 
+// The chat push payload includes conversationId/listingId/senderId
+// alongside whatever bid-related data other notification types carry —
+// pulled out here so navigationRef.ts's pending-nav helpers can be driven
+// from a single place regardless of whether the tap happened in the
+// foreground, from a background state, or from a cold start (see
+// getInitialPushConversationOrListing below).
+export function conversationIdFromPushData(
+  data?: Record<string, string>,
+): string | null {
+  return data?.conversationId ?? null;
+}
+
+export function listingIdFromPushData(data?: Record<string, string>): string | null {
+  return data?.listing_id ?? data?.listingId ?? null;
+}
+
+// Covers the case where the app was fully killed and is launched by tapping
+// a notification — notifee's onForegroundEvent/onBackgroundEvent listeners
+// above don't fire for that case.
+export async function getInitialPushData(): Promise<Record<string, string> | null> {
+  const initial = await notifee.getInitialNotification();
+  const data = initial?.notification?.data as Record<string, string> | undefined;
+  return data ?? null;
+}
+
 export function setupBackgroundHandler() {
   notifee.onBackgroundEvent(async ({type, detail}: Event) => {
     if (type === EventType.PRESS && detail.notification?.id) {

@@ -34,4 +34,14 @@ export const ENDPOINTS = {
     LIST: '/notifications',
     MARK_READ: (id: string) => `/notifications/${id}/read`,
   },
+  CHATS: {
+    KEYS_UPLOAD: '/chats/keys',
+    KEYS_ME: '/chats/keys/me',
+    KEYS_FOR_PEER: (peerUserId: string) => `/chats/keys/${peerUserId}`,
+    LIST: '/chats',
+    CREATE: '/chats',
+    DETAIL: (id: string) => `/chats/${id}`,
+    MESSAGES: (id: string) => `/chats/${id}/messages`,
+    READ: (id: string) => `/chats/${id}/read`,
+  },
 } as const;
