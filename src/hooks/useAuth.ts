@@ -18,6 +18,7 @@ import {
   onFCMTokenRefresh,
 } from '../services/notifeeService';
 import {getAccessToken} from '../services/tokenStorage';
+import {ensureChatKeysReady} from '../services/chatService';
 import {GOOGLE_WEB_CLIENT_ID} from '../config/env';
 
 export function useAuth() {
@@ -69,6 +70,16 @@ export function useAuth() {
       }
     } catch {
       // Non-critical — app works without push/realtime
+    }
+
+    // Ensure this device has a registered E2E chat key bundle (creating the
+    // local Olm identity on first use) and replenish one-time prekeys if
+    // running low. Non-fatal — chat just won't be usable until this
+    // succeeds on a later app open if it fails here (e.g. offline).
+    try {
+      await ensureChatKeysReady();
+    } catch {
+      // Non-critical at login time — retried opportunistically elsewhere.
     }
   };
 

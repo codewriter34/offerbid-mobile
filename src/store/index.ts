@@ -2,3 +2,5 @@ export {useAuthStore} from './authStore';
 export {useListingStore} from './listingStore';
 export {useBidStore} from './bidStore';
 export {useNotificationStore} from './notificationStore';
+export {useChatStore} from './chatStore';
+export type {DecryptedMessage} from './chatStore';
