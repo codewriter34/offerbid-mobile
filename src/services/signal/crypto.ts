@@ -274,8 +274,20 @@ async function getOrCreateOutboundSession(
     theirOneTimeKey = device.oneTimePreKey.publicKey;
   } else {
     // Peer's OTPK pool is exhausted server-side — fall back to their
-    // signed prekey (see module doc #3 for the verification caveat).
-    await verifySignedPreKey(undefined, device.signedPreKey.publicKey, device.signedPreKey.signature);
+    // signed prekey (see module doc #3 for the verification caveat). The
+    // API doesn't expose an Ed25519 key today, so this can never actually
+    // succeed — fail closed (matching the web client's behavior) rather
+    // than silently using an unverified key.
+    const {verified} = await verifySignedPreKey(
+      undefined,
+      device.signedPreKey.publicKey,
+      device.signedPreKey.signature,
+    );
+    if (!verified) {
+      throw new Error(
+        "Could not verify this device's signed prekey — refusing to fall back to an unverified key",
+      );
+    }
     theirOneTimeKey = device.signedPreKey.publicKey;
   }
 
