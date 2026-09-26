@@ -61,3 +61,7 @@ export async function fetchSimilarListings(id: string) {
 export async function reportListing(listingId: string, reason: string) {
   await apiClient.post(ENDPOINTS.REPORTS, {listingId, reason});
 }
+
+export async function reportUser(reportedUserId: string, reason: string) {
+  await apiClient.post(ENDPOINTS.REPORTS, {reportedUserId, reason});
+}

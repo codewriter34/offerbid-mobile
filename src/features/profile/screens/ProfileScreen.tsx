@@ -13,7 +13,7 @@ import {
 } from '@shared/config/hubs';
 import {useIdentity} from '@features/identity/useIdentity';
 import {uploadMedia} from '@shared/lib/uploads';
-import {updateAvatar, updateProfile} from '@features/profile/profileService';
+import {updateAvatar, updateProfile, deleteAccount} from '@features/profile/profileService';
 import {UpdateProfilePayload} from '@shared/types';
 import {pickOneImage} from '@shared/lib/imagePicker';
 import {formatMemberSince, formatPlace} from '@shared/lib/formatters';
@@ -104,8 +104,16 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
               return;
             }
             try {
-              const updated = await updateProfile({phone: phone.trim()});
-              updateUser({phone: updated.phone});
+              const digits = phone.replace(/\D/g, '');
+              if (!/^\d{7,15}$/.test(digits)) {
+                Alert.alert('Invalid', 'Enter your WhatsApp number without the country code.');
+                return;
+              }
+              const updated = await updateProfile({
+                phone: digits,
+                countryCode: user?.countryCode ?? '+237',
+              });
+              updateUser({phone: updated.phone, countryCode: updated.countryCode});
             } catch (err: any) {
               Alert.alert('Update failed', err?.response?.data?.message ?? err.message);
             }
@@ -128,6 +136,64 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         },
       },
     ]);
+  };
+
+  const performDelete = async (password?: string) => {
+    try {
+      await deleteAccount(password);
+      await signOut();
+      navigation.navigate('Explore');
+    } catch (err: any) {
+      Alert.alert(
+        'Could not delete account',
+        err?.response?.data?.message ?? err.message ?? 'Try again in a moment.',
+      );
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account, listings, and bids. You cannot undo this.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => {
+            const confirm = (password?: string) =>
+              Alert.alert(
+                'Are you sure?',
+                'Your OfferBid account will be deleted immediately.',
+                [
+                  {text: 'Cancel', style: 'cancel'},
+                  {
+                    text: 'Delete account',
+                    style: 'destructive',
+                    onPress: () => {
+                      void performDelete(password);
+                    },
+                  },
+                ],
+              );
+            if (user?.email) {
+              if (Alert.prompt) {
+                Alert.prompt(
+                  'Confirm password',
+                  'Enter your password to delete this account. Google-only accounts can leave this blank.',
+                  (password: string) => confirm(password?.trim() || undefined),
+                  'secure-text',
+                );
+              } else {
+                confirm();
+              }
+            } else {
+              confirm();
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -293,8 +359,8 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
               icon="phone"
               iconBg="#FEE2E2"
               iconColor="#DC2626"
-              title="Edit phone"
-              subtitle="Update your phone number"
+              title="WhatsApp (optional)"
+              subtitle={user?.phone ? 'Update the number used after a deal' : 'Add a number so accepted deals can reach you'}
               onPress={handleEditPhone}
             />
             <MenuRow
@@ -327,8 +393,16 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
               iconColor="#334155"
               title="Log out"
               subtitle="Sign out from your account"
-              last
               onPress={handleSignOut}
+            />
+            <MenuRow
+              icon="logout"
+              iconBg="#FEE2E2"
+              iconColor="#DC2626"
+              title="Delete account"
+              subtitle="Permanently remove your listings, bids, and profile"
+              last
+              onPress={handleDeleteAccount}
             />
           </View>
         </View>

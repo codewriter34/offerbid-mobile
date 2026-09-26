@@ -30,7 +30,7 @@ module.exports = {
     name: 'OfferBid',
     slug: 'offerbid',
     owner: 'tamehchana',
-    version: '0.2.0',
+    version: '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'light',
     newArchEnabled: true,
@@ -48,6 +48,7 @@ module.exports = {
       icon: './assets/store/appstore-icon-1024.png',
       infoPlist: {
         UIBackgroundModes: ['remote-notification'],
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {

@@ -26,9 +26,9 @@ export interface RegisterPayload {
   email: string;
   password: string;
   fullName: string;
-  countryCode: string;
-  phone: string;
   country: Country;
+  countryCode?: string;
+  phone?: string;
 }
 
 export interface LoginPayload {
@@ -59,6 +59,7 @@ export interface UpdateProfilePayload {
   address?: string;
   primaryIntent?: string;
   phone?: string;
+  countryCode?: string;
 }
 
 export interface PublicProfile {

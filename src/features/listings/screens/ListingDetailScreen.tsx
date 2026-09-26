@@ -24,6 +24,7 @@ import {useBids} from '@features/bids/useBids';
 import {useRealtimeBids} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {openAcceptedDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
+import {blockUser} from '@features/profile/profileService';
 import {listingImageUrls} from '@api/normalize';
 import {formatMemberSince, formatPlace, formatPrice, formatRelativeTime} from '@shared/lib/formatters';
 import {listingShareMessage, listingShareUrl} from '@shared/config/env';
@@ -130,6 +131,17 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   };
 
   const handleAccept = async (bidId: string) => {
+    if (isSeller && !user?.phone?.replace(/\D/g, '')) {
+      Alert.alert(
+        'Add WhatsApp',
+        'Add a WhatsApp number in Profile so the buyer can reach you after a deal.',
+        [
+          {text: 'Not now', style: 'cancel'},
+          {text: 'Open Profile', onPress: () => navigation.navigate('MainTabs', {screen: 'Profile'})},
+        ],
+      );
+      return;
+    }
     try {
       const updated = !isSeller
         ? await respondToCounter(bidId, {action: 'ACCEPT'})
@@ -275,6 +287,35 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     setReportOpen(true);
   };
 
+  const handleBlockSeller = () => {
+    const sellerId = currentListing?.seller?.id ?? currentListing?.sellerId;
+    if (!sellerId) {
+      Alert.alert('Unavailable', 'We could not identify this seller.');
+      return;
+    }
+    Alert.alert(
+      'Block seller',
+      'Their listings will be hidden from your feed. We will also notify OfferBid.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(sellerId);
+              Alert.alert('Blocked', 'You will not see this seller in your feed.', [
+                {text: 'OK', onPress: () => dismissScreen(navigation)},
+              ]);
+            } catch (err: any) {
+              Alert.alert('Could not block', err?.response?.data?.message ?? err.message);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const submitReport = async () => {
     if (!currentListing) return;
     if (reportReason.trim().length < 8) {
@@ -283,7 +324,10 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     }
     setReporting(true);
     try {
-      await reportListing(currentListing.id, reportReason.trim());
+              await reportListing(
+                currentListing.id,
+                reportReason.trim(),
+              );
       setReportOpen(false);
       Alert.alert('Reported', 'Thanks. Our team will review this.');
     } catch (err: any) {
@@ -606,11 +650,18 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
           ) : null}
 
           {!isSeller ? (
-            <TouchableOpacity onPress={handleReport} className="mt-3 items-center py-2">
-              <Text className="text-[13px] font-semibold text-brand-gray">
-                Report listing
-              </Text>
-            </TouchableOpacity>
+            <View className="mt-3 flex-row justify-center gap-6">
+              <TouchableOpacity onPress={handleReport} className="items-center py-2">
+                <Text className="text-[13px] font-semibold text-brand-gray">
+                  Report listing
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleBlockSeller} className="items-center py-2">
+                <Text className="text-[13px] font-semibold text-brand-danger">
+                  Block seller
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : null}
 
           <View className="mt-3">

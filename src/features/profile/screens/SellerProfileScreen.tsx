@@ -1,7 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import {View, Text, Image, ScrollView} from 'react-native';
+import {View, Text, Image, ScrollView, Alert, TouchableOpacity} from 'react-native';
 import {RootStackScreenProps} from '@app/navigation/types';
-import {fetchPublicProfile} from '@features/profile/profileService';
+import {fetchPublicProfile, blockUser} from '@features/profile/profileService';
+import {reportUser} from '@features/listings/listingService';
+import {dismissScreen} from '@app/navigation/navigationRef';
 import {PublicProfile} from '@shared/types';
 import {formatMemberSince} from '@shared/lib/formatters';
 import {AppShell} from '@shared/ui/AppShell';
@@ -115,6 +117,61 @@ export const SellerProfileScreen: React.FC<Props> = ({route, navigation}) => {
               </Text>
             </View>
           </View>
+        </View>
+
+        <View className="mx-4 mb-10 flex-row justify-center gap-6">
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert('Report seller', 'Why are you reporting this account?', [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                  text: 'Scam or fraud',
+                  onPress: () => {
+                    void reportUser(userId, 'This seller looks like a scam or is abusive')
+                      .then(() => Alert.alert('Reported', 'Thanks. Our team will review this.'))
+                      .catch((err: any) =>
+                        Alert.alert(
+                          'Could not report',
+                          err?.response?.data?.message ?? err.message,
+                        ),
+                      );
+                  },
+                },
+              ])
+            }
+            className="py-2">
+            <Text className="text-[13px] font-semibold text-brand-gray">Report user</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert(
+                'Block seller',
+                'Their listings will be hidden from your feed. We will also notify OfferBid.',
+                [
+                  {text: 'Cancel', style: 'cancel'},
+                  {
+                    text: 'Block',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await blockUser(userId);
+                        Alert.alert('Blocked', 'You will not see this seller in your feed.', [
+                          {text: 'OK', onPress: () => dismissScreen(navigation)},
+                        ]);
+                      } catch (err: any) {
+                        Alert.alert(
+                          'Could not block',
+                          err?.response?.data?.message ?? err.message,
+                        );
+                      }
+                    },
+                  },
+                ],
+              )
+            }
+            className="py-2">
+            <Text className="text-[13px] font-semibold text-brand-danger">Block seller</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </AppShell>

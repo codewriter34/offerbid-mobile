@@ -4,7 +4,7 @@ import {AuthStackScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
 import {finishAuth, showApiError, showGoogleError} from '@features/auth/authFlow';
 import {dismissScreen} from '@app/navigation/navigationRef';
-import {COUNTRY_OPTIONS} from '@shared/config/hubs';
+import {openOfferBidLegal} from '@shared/lib/legal';
 import {Country} from '@shared/types';
 import {
   emailTypingHint,
@@ -67,20 +67,22 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
     if (fullName.trim().length < 2) return;
     if (emailError || !email.trim()) return;
     if (!isStrongPassword(password)) return;
-    if (phoneError || !isValidLocalPhone(phone, country)) return;
+    if (phone.replace(/\D/g, '')) {
+      if (phoneError || !isValidLocalPhone(phone, country)) return;
+    }
     if (!agreed) {
-      Alert.alert('Terms', 'Please agree to the terms and conditions.');
+      Alert.alert('Terms', 'Please agree to the Terms of Service and Privacy Policy.');
       return;
     }
     setLoading(true);
     try {
+      const phoneDigits = phone.replace(/\D/g, '');
       await register({
         email: email.trim(),
         password,
         fullName: fullName.trim(),
-        countryCode,
-        phone: phone.replace(/\D/g, ''),
         country,
+        ...(phoneDigits ? {phone: phoneDigits, countryCode} : {}),
       });
       setStep('otp');
       Alert.alert('Check your email', 'We sent a 6-digit verification code.');
@@ -130,7 +132,7 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
         title={step === 'form' ? 'Create account' : 'Check your email'}
         subtitle={
           step === 'form'
-            ? 'Join the second-hand marketplace. Bid, agree, and meet in person.'
+            ? 'WhatsApp is optional. You can add it later in Profile when you want to close a deal.'
             : `Enter the 6-digit code we sent to ${email || 'you'}.`
         }
       />
@@ -184,23 +186,30 @@ export const SignupScreen: React.FC<Props> = ({navigation}) => {
             }
           />
           <View className="mb-5 mt-1">
-            <AuthCheckbox
-              checked={agreed}
-              label="I agree to the terms and conditions"
-              onToggle={() => setAgreed(v => !v)}
-            />
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  'Terms',
-                  'OfferBid is a campus marketplace. Meet in public, inspect items before paying, and never share PINs or OTP codes. WhatsApp contact unlocks only after both sides accept an offer.',
-                )
-              }
-              className="mt-1">
-              <Text className="text-xs font-semibold text-brand-blue">Read summary</Text>
-            </TouchableOpacity>
+            <AuthCheckbox checked={agreed} onToggle={() => setAgreed(v => !v)}>
+              <Text className="text-sm leading-5 text-brand-charcoal">
+                I agree to the{' '}
+                <Text
+                  className="font-bold text-brand-blue"
+                  onPress={() => void openOfferBidLegal('terms')}>
+                  Terms of Service
+                </Text>
+                {' '}and{' '}
+                <Text
+                  className="font-bold text-brand-blue"
+                  onPress={() => void openOfferBidLegal('privacy')}>
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+            </AuthCheckbox>
           </View>
-          <AuthButton title="Create account" loading={loading} onPress={handleRegister} />
+          <AuthButton
+            title="Create account"
+            loading={loading}
+            disabled={!agreed}
+            onPress={handleRegister}
+          />
           <AuthFooterLink
             prompt="Already have an account?"
             action="Sign in"

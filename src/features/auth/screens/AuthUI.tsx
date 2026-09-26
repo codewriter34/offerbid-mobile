@@ -260,17 +260,21 @@ export function AuthButton({
   title,
   onPress,
   loading,
+  disabled,
 }: {
   title: string;
   onPress: () => void;
   loading: boolean;
+  disabled?: boolean;
 }) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={loading}
+      disabled={loading || disabled}
       activeOpacity={0.85}
-      className="min-h-[52px] items-center justify-center rounded-xl bg-brand-blue">
+      className={`min-h-[52px] items-center justify-center rounded-xl ${
+        disabled ? 'bg-slate-300' : 'bg-brand-blue'
+      }`}>
       {loading ? (
         <ActivityIndicator color="#FFFFFF" />
       ) : (
@@ -283,26 +287,34 @@ export function AuthButton({
 export function AuthCheckbox({
   checked,
   label,
+  children,
   onToggle,
 }: {
   checked: boolean;
-  label: string;
+  label?: string;
+  children?: React.ReactNode;
   onToggle: () => void;
 }) {
   return (
-    <TouchableOpacity
-      onPress={onToggle}
-      className="flex-row items-start gap-2.5"
-      accessibilityRole="checkbox"
-      accessibilityState={{checked}}>
-      <View
-        className={`mt-0.5 h-5 w-5 items-center justify-center rounded ${
-          checked ? 'bg-brand-blue' : 'border border-slate-300 bg-white'
-        }`}>
-        {checked ? <Text className="text-[11px] font-bold text-white">✓</Text> : null}
-      </View>
-      <Text className="flex-1 text-sm leading-5 text-brand-charcoal">{label}</Text>
-    </TouchableOpacity>
+    <View className="flex-row items-start gap-2.5">
+      <TouchableOpacity
+        onPress={onToggle}
+        accessibilityRole="checkbox"
+        accessibilityState={{checked}}
+        hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+        <View
+          className={`mt-0.5 h-5 w-5 items-center justify-center rounded ${
+            checked ? 'bg-brand-blue' : 'border border-slate-300 bg-white'
+          }`}>
+          {checked ? <Text className="text-[11px] font-bold text-white">✓</Text> : null}
+        </View>
+      </TouchableOpacity>
+      {children ? (
+        <View className="min-w-0 flex-1">{children}</View>
+      ) : (
+        <Text className="flex-1 text-sm leading-5 text-brand-charcoal">{label}</Text>
+      )}
+    </View>
   );
 }
 
@@ -351,7 +363,7 @@ export function WhatsAppField({
   return (
     <View className="mb-4">
       <Text className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-brand-gray">
-        WhatsApp number
+        WhatsApp number (optional)
       </Text>
       <View className="flex-row gap-2">
         <TouchableOpacity
