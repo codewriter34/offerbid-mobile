@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, Alert, StatusBar} from 'react-native';
+import {View, Text, StyleSheet, Alert, StatusBar, Linking, TouchableOpacity} from 'react-native';
 import {RootStackScreenProps} from '../../types/navigation';
 import {useAuth} from '../../hooks/useAuth';
 import {Button} from '../../components/Button';
@@ -13,8 +13,25 @@ type Props = RootStackScreenProps<'Auth'>;
 export const AuthScreen: React.FC<Props> = ({navigation}) => {
   const {signIn} = useAuth();
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  const openLegal = async (path: 'terms' | 'privacy') => {
+    const url = `https://offerbid.co/${path}`;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Unable to open', url);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
+    if (!agreedToTerms) {
+      Alert.alert(
+        'Terms required',
+        'Please agree to the Terms of Service and Privacy Policy to continue.',
+      );
+      return;
+    }
     setLoading(true);
     try {
       const user = await signIn();
@@ -69,13 +86,33 @@ export const AuthScreen: React.FC<Props> = ({navigation}) => {
           variant="primary"
           size="lg"
           loading={loading}
+          disabled={!agreedToTerms}
           fullWidth
           style={styles.googleButton}
         />
 
-        <Text style={styles.terms}>
-          By signing in you agree to our Terms of Service and Privacy Policy.
-        </Text>
+        <View style={styles.termsRow}>
+          <TouchableOpacity
+            onPress={() => setAgreedToTerms(value => !value)}
+            accessibilityRole="checkbox"
+            accessibilityState={{checked: agreedToTerms}}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+              {agreedToTerms ? <Text style={styles.checkmark}>✓</Text> : null}
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.terms}>
+            I agree to the{' '}
+            <Text style={styles.termsLink} onPress={() => openLegal('terms')}>
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink} onPress={() => openLegal('privacy')}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -144,9 +181,38 @@ const styles = StyleSheet.create({
   googleButton: {
     marginBottom: spacing.lg,
   },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: colors.gradientStart,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.gradientStart,
+  },
+  checkmark: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   terms: {
     ...typography.caption,
-    color: colors.text.light,
-    textAlign: 'center',
+    color: colors.text.secondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  termsLink: {
+    color: colors.gradientStart,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

@@ -16,6 +16,12 @@ import {useBids} from '../../hooks/useBids';
 import {useRealtimeBids} from '../../hooks/useRealtimeBids';
 import {useAuthStore} from '../../store/authStore';
 import {openWhatsApp} from '../../services/whatsappBridge';
+import {blockUser, reportContent} from '../../services/moderationService';
+import {
+  apiErrorMessage,
+  hasWhatsAppNumber,
+  promptAddWhatsApp,
+} from '../../utils/whatsappPrompt';
 import {formatPrice, formatRelativeTime} from '../../utils/formatters';
 import {LoadingSpinner} from '../../components/LoadingSpinner';
 import {ErrorView} from '../../components/ErrorView';
@@ -23,7 +29,6 @@ import {BidCard} from '../../components/BidCard';
 import {Button} from '../../components/Button';
 import {CategoryBadge} from '../../components/CategoryBadge';
 import {SafetyBanner} from '../../components/SafetyBanner';
-import {EmptyState} from '../../components/EmptyState';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
 import {spacing, borderRadius} from '../../theme/spacing';
@@ -48,9 +53,20 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
   }, [listingId]);
 
   const bids = listingBids[listingId] ?? [];
-  const isSeller = currentListing?.seller_id === user?.id;
+  const sellerId =
+    currentListing?.seller_id ??
+    (currentListing as {sellerId?: string} | null)?.sellerId;
+  const isSeller = Boolean(sellerId && sellerId === user?.id);
+
+  const openProfile = () => {
+    navigation.navigate('MainTabs', {screen: 'Profile'});
+  };
 
   const handleAccept = async (bidId: string) => {
+    if (!hasWhatsAppNumber(user)) {
+      promptAddWhatsApp(openProfile);
+      return;
+    }
     try {
       await updateBid(bidId, {status: 'accepted'});
     } catch (err: any) {
@@ -87,12 +103,85 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
 
   const handleWhatsApp = (bid: Bid) => {
     if (!currentListing || !user) return;
+    if (!hasWhatsAppNumber(user)) {
+      promptAddWhatsApp(openProfile);
+      return;
+    }
     openWhatsApp({
       sellerPhone: user.phone ?? '',
       itemTitle: currentListing.title,
       acceptedPrice: bid.amount,
       hubLocation: selectedHub?.neighborhood ?? '',
     });
+  };
+
+  const submitReport = async (reason: string) => {
+    if (!currentListing) return;
+    try {
+      await reportContent({
+        listingId: currentListing.id,
+        reportedUserId: sellerId,
+        reason,
+      });
+      Alert.alert('Reported', 'Thanks. We will review this listing.');
+    } catch (err) {
+      Alert.alert('Could not report', apiErrorMessage(err, 'Try again in a moment.'));
+    }
+  };
+
+  const handleReport = () => {
+    Alert.alert('Report listing', 'Why are you reporting this?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Scam or fraud',
+        onPress: () => {
+          void submitReport('This listing looks like a scam or fraud');
+        },
+      },
+      {
+        text: 'Inappropriate',
+        onPress: () => {
+          void submitReport('This listing is inappropriate or offensive');
+        },
+      },
+      {
+        text: 'Stolen or prohibited',
+        onPress: () => {
+          void submitReport('This may be stolen or prohibited goods');
+        },
+      },
+    ]);
+  };
+
+  const handleBlockSeller = () => {
+    if (!sellerId) {
+      Alert.alert('Unavailable', 'We could not identify this seller.');
+      return;
+    }
+    Alert.alert(
+      'Block seller',
+      'Their listings will be hidden from your feed. We will also notify OfferBid.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(sellerId);
+              Alert.alert('Blocked', 'You will not see this seller in your feed.', [
+                {text: 'OK', onPress: () => navigation.goBack()},
+              ]);
+            } catch (err) {
+              Alert.alert(
+                'Could not block',
+                apiErrorMessage(err, 'Try again in a moment.'),
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (isLoading && !currentListing) {
@@ -208,6 +297,24 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
         )}
 
         <SafetyBanner hubLocation={selectedHub?.neighborhood} />
+
+        {!isSeller ? (
+          <View style={styles.moderationRow}>
+            <Button
+              title="Report listing"
+              variant="ghost"
+              size="sm"
+              onPress={handleReport}
+            />
+            <Button
+              title="Block seller"
+              variant="ghost"
+              size="sm"
+              onPress={handleBlockSeller}
+              textStyle={styles.blockText}
+            />
+          </View>
+        ) : null}
 
         <View style={styles.divider} />
 
@@ -346,5 +453,13 @@ const styles = StyleSheet.create({
     color: colors.text.light,
     textAlign: 'center',
     paddingVertical: spacing.lg,
+  },
+  moderationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+  },
+  blockText: {
+    color: colors.error,
   },
 });

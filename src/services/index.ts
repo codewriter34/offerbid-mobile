@@ -33,3 +33,9 @@ export {
 } from './notifeeService';
 export {buildWhatsAppUrl, openWhatsApp} from './whatsappBridge';
 export type {WhatsAppMessageParams} from './whatsappBridge';
+export {
+  reportContent,
+  blockUser,
+  deleteAccount,
+  updateWhatsApp,
+} from './moderationService';

@@ -1,11 +1,11 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
   Alert,
+  TextInput,
 } from 'react-native';
 import {MainTabScreenProps} from '../../types/navigation';
 import {useAuth} from '../../hooks/useAuth';
@@ -15,6 +15,8 @@ import {MAX_ACTIVE_LISTINGS_UNVERIFIED} from '../../config/hubs';
 import {ListingCard} from '../../components/ListingCard';
 import {EmptyState} from '../../components/EmptyState';
 import {Button} from '../../components/Button';
+import {deleteAccount, updateWhatsApp} from '../../services/moderationService';
+import {apiErrorMessage} from '../../utils/whatsappPrompt';
 import {colors} from '../../theme/colors';
 import {typography} from '../../theme/typography';
 import {spacing, borderRadius} from '../../theme/spacing';
@@ -24,11 +26,21 @@ type Props = MainTabScreenProps<'Profile'>;
 export const ProfileScreen: React.FC<Props> = ({navigation}) => {
   const {user, signOut} = useAuth();
   const selectedHub = useAuthStore(s => s.selectedHub);
+  const updateUser = useAuthStore(s => s.updateUser);
   const {myListings, fetchMyListings} = useListings();
+  const [whatsapp, setWhatsapp] = useState(user?.phone?.replace(/\D/g, '') ?? '');
+  const [savingWhatsApp, setSavingWhatsApp] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     fetchMyListings();
   }, []);
+
+  useEffect(() => {
+    if (user?.phone) {
+      setWhatsapp(user.phone.replace(/\D/g, ''));
+    }
+  }, [user?.phone]);
 
   const activeListings = myListings.filter(l => l.status === 'active');
   const soldListings = myListings.filter(l => l.status === 'sold');
@@ -41,7 +53,10 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         style: 'destructive',
         onPress: async () => {
           await signOut();
-          navigation.reset({index: 0, routes: [{name: 'Auth'}]});
+          navigation.getParent()?.reset({
+            index: 0,
+            routes: [{name: 'Auth'}],
+          });
         },
       },
     ]);
@@ -49,6 +64,75 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
 
   const handleChangeHub = () => {
     navigation.navigate('HubSelect');
+  };
+
+  const handleSaveWhatsApp = async () => {
+    const digits = whatsapp.replace(/\D/g, '');
+    if (!/^\d{7,15}$/.test(digits)) {
+      Alert.alert(
+        'Invalid number',
+        'Enter your WhatsApp number without the country code (7–15 digits).',
+      );
+      return;
+    }
+    setSavingWhatsApp(true);
+    try {
+      const updated = await updateWhatsApp(digits);
+      updateUser({phone: updated?.phone ?? digits});
+      Alert.alert('Saved', 'Your WhatsApp number is on your profile.');
+    } catch (err) {
+      Alert.alert('Could not save', apiErrorMessage(err, 'Try again in a moment.'));
+    } finally {
+      setSavingWhatsApp(false);
+    }
+  };
+
+  const performDelete = async () => {
+    setDeletingAccount(true);
+    try {
+      await deleteAccount();
+      await signOut();
+      navigation.getParent()?.reset({
+        index: 0,
+        routes: [{name: 'Auth'}],
+      });
+    } catch (err) {
+      Alert.alert(
+        'Could not delete account',
+        apiErrorMessage(err, 'Try again in a moment.'),
+      );
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account, listings, and bids. You cannot undo this.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert(
+              'Are you sure?',
+              'Your OfferBid account will be deleted immediately.',
+              [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                  text: 'Delete account',
+                  style: 'destructive',
+                  onPress: () => {
+                    void performDelete();
+                  },
+                },
+              ],
+            ),
+        },
+      ],
+    );
   };
 
   return (
@@ -149,6 +233,37 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         )}
       </View>
 
+      <View style={styles.whatsappCard}>
+        <Text style={styles.sectionTitle}>WhatsApp (optional)</Text>
+        <Text style={styles.whatsappHint}>
+          Not required to use OfferBid. Add it so accepted deals can continue on
+          WhatsApp.
+        </Text>
+        <View style={styles.phoneRow}>
+          <Text style={styles.countryPrefix}>+237</Text>
+          <TextInput
+            style={styles.phoneInput}
+            keyboardType="phone-pad"
+            placeholder="6XXXXXXXX"
+            placeholderTextColor={colors.text.light}
+            value={whatsapp}
+            onChangeText={setWhatsapp}
+            maxLength={15}
+          />
+        </View>
+        <Button
+          title="Save WhatsApp"
+          variant="outline"
+          size="md"
+          fullWidth
+          loading={savingWhatsApp}
+          onPress={() => {
+            void handleSaveWhatsApp();
+          }}
+          style={styles.actionButton}
+        />
+      </View>
+
       <View style={styles.actions}>
         <Button
           title="Change Location"
@@ -160,10 +275,19 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
         />
         <Button
           title="Sign Out"
-          variant="danger"
+          variant="outline"
           size="md"
           fullWidth
           onPress={handleSignOut}
+          style={styles.actionButton}
+        />
+        <Button
+          title="Delete account"
+          variant="danger"
+          size="md"
+          fullWidth
+          loading={deletingAccount}
+          onPress={handleDeleteAccount}
           style={styles.actionButton}
         />
       </View>
@@ -241,6 +365,40 @@ const styles = StyleSheet.create({
   },
   section: {padding: spacing.md},
   sectionTitle: {...typography.h3, color: colors.text.primary, marginBottom: spacing.md},
+  whatsappCard: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.md,
+  },
+  whatsappHint: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+  },
+  countryPrefix: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.text.secondary,
+    paddingHorizontal: spacing.md,
+  },
+  phoneInput: {
+    flex: 1,
+    ...typography.body,
+    color: colors.text.primary,
+    paddingVertical: spacing.sm,
+    paddingRight: spacing.md,
+  },
   actions: {padding: spacing.md, paddingBottom: spacing.xxl},
   actionButton: {marginBottom: spacing.sm},
 });

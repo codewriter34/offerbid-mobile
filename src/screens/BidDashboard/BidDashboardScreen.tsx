@@ -15,6 +15,10 @@ import {useBids} from '../../hooks/useBids';
 import {useRealtimeUser} from '../../hooks/useRealtimeBids';
 import {useAuthStore} from '../../store/authStore';
 import {openWhatsApp} from '../../services/whatsappBridge';
+import {
+  hasWhatsAppNumber,
+  promptAddWhatsApp,
+} from '../../utils/whatsappPrompt';
 import {BidCard} from '../../components/BidCard';
 import {EmptyState} from '../../components/EmptyState';
 import {ErrorView} from '../../components/ErrorView';
@@ -51,6 +55,10 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
   }, []);
 
   const handleAccept = async (bidId: string) => {
+    if (!hasWhatsAppNumber(user)) {
+      promptAddWhatsApp(() => navigation.navigate('Profile'));
+      return;
+    }
     Alert.alert('Accept Bid', 'Accept this offer? The buyer will be able to contact you on WhatsApp.', [
       {text: 'Cancel', style: 'cancel'},
       {
@@ -110,6 +118,10 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleWhatsApp = (bid: Bid) => {
+    if (!hasWhatsAppNumber(user)) {
+      promptAddWhatsApp(() => navigation.navigate('Profile'));
+      return;
+    }
     openWhatsApp({
       sellerPhone: user?.phone ?? '',
       itemTitle: 'Item',

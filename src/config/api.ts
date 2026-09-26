@@ -12,7 +12,10 @@ export const ENDPOINTS = {
   USERS: {
     ME: '/users/me',
     UPDATE: '/users/me',
+    DELETE: '/users/me',
     FCM_TOKEN: '/users/me/fcm-token',
+    BLOCKS: '/users/me/blocks',
+    BLOCK: (id: string) => `/users/${id}/block`,
   },
   HUBS: {
     LIST: '/hubs',
@@ -33,5 +36,8 @@ export const ENDPOINTS = {
   NOTIFICATIONS: {
     LIST: '/notifications',
     MARK_READ: (id: string) => `/notifications/${id}/read`,
+  },
+  REPORTS: {
+    CREATE: '/reports',
   },
 } as const;
