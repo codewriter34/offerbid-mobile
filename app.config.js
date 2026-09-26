@@ -88,6 +88,15 @@ module.exports = {
       '@react-native-firebase/app',
       '@react-native-firebase/auth',
       '@react-native-firebase/messaging',
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            useFrameworks: 'static',
+          },
+        },
+      ],
+      './plugins/withRnFirebasePodfix',
       'expo-secure-store',
       'expo-web-browser',
       'expo-asset',
