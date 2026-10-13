@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef} from 'react';
+import {AppState} from 'react-native';
 import {useAuthStore} from '@features/auth/authStore';
 import {
   signInWithGoogle,
@@ -29,6 +30,7 @@ import {GOOGLE_WEB_CLIENT_ID} from '@shared/config/env';
 import {withTimeout} from '@shared/lib/withTimeout';
 import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '@shared/types';
 import {uploadKeysIfNeeded} from '@features/chat/chatKeySetup';
+import {recordAppOpen} from '@shared/lib/analyticsSession';
 
 export function useAuth() {
   const {user, isAuthenticated, isLoading, setUser, setHub} =
@@ -41,8 +43,13 @@ export function useAuth() {
     }
     bootstrapAuth();
 
+    const appStateSub = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') void recordAppOpen();
+    });
+
     return () => {
       tokenRefreshUnsub.current?.();
+      appStateSub.remove();
     };
   }, []);
 
@@ -56,6 +63,7 @@ export function useAuth() {
       } else {
         setUser(null);
       }
+      void recordAppOpen();
     } catch {
       setUser(null);
     } finally {
