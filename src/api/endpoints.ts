@@ -60,4 +60,7 @@ export const ENDPOINTS = {
     DELETE: (id: string) => `/notifications/${id}`,
   },
   REPORTS: '/reports',
+  ANALYTICS: {
+    SESSION: '/analytics/session',
+  },
 } as const;
