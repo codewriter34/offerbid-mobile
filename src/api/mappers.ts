@@ -32,6 +32,7 @@ export function mapUser(rawInput: unknown): User {
     address,
     location,
     avatarUrl: pickString(raw.avatarUrl, raw.avatar, raw.avatar_url, raw.url),
+    showPhoneInChat: Boolean(raw.showPhoneInChat ?? raw.show_phone_in_chat),
     profileComplete: Boolean(
       raw.profileComplete ??
         raw.isProfileComplete ??

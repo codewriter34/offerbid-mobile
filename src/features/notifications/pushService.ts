@@ -145,6 +145,20 @@ export async function displayNotification(
   });
 }
 
+export function conversationIdFromPushData(
+  data?: Record<string, unknown> | null,
+): string | null {
+  if (!data) return null;
+  const nested = data.payload as Record<string, unknown> | undefined;
+  const raw =
+    data.conversationId ??
+    data.conversation_id ??
+    nested?.conversationId ??
+    nested?.conversation_id;
+  if (typeof raw === 'string' && raw.length > 0) return raw;
+  return null;
+}
+
 export function listingIdFromPushData(
   data?: Record<string, unknown> | null,
 ): string | null {

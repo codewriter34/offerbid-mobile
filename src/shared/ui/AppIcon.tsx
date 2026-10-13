@@ -24,7 +24,8 @@ export type AppIconName =
   | 'whatsapp'
   | 'edit'
   | 'phone'
-  | 'image';
+  | 'image'
+  | 'message';
 
 export function AppIcon({
   name,
@@ -298,6 +299,18 @@ export function AppIcon({
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+        </Svg>
+      );
+    case 'message':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M4 4.5h16a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5H8.5L4.5 20V6A1.5 1.5 0 0 1 4 4.5Z"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinejoin="round"
+          />
+          <Path d="M8 9.5h8M8 13h5" stroke={color} strokeWidth={stroke} strokeLinecap="round" />
         </Svg>
       );
   }

@@ -11,6 +11,7 @@ export interface User {
   address: string | null;
   location: string | null;
   avatarUrl: string | null;
+  showPhoneInChat: boolean;
   profileComplete: boolean;
   isVerified: boolean;
   googleId: string | null;
@@ -59,6 +60,7 @@ export interface UpdateProfilePayload {
   address?: string;
   primaryIntent?: string;
   phone?: string;
+  showPhoneInChat?: boolean;
 }
 
 export interface PublicProfile {

@@ -4,6 +4,7 @@ import {MainTabParamList} from '@app/navigation/types';
 import {FeedScreen} from '@features/listings/screens/FeedScreen';
 import {MyBidsScreen} from '@features/bids/screens/MyBidsScreen';
 import {BidDashboardScreen} from '@features/bids/screens/BidDashboardScreen';
+import {InboxScreen} from '@features/chat/screens/InboxScreen';
 import {ProfileScreen} from '@features/profile/screens/ProfileScreen';
 import {BottomNavBar} from '@shared/ui/BottomNavBar';
 
@@ -19,6 +20,7 @@ export const MainTabNavigator: React.FC = () => {
       <Tab.Screen name="Explore" component={FeedScreen} />
       <Tab.Screen name="MyBids" component={MyBidsScreen} options={{title: 'My Offers'}} />
       <Tab.Screen name="Selling" component={BidDashboardScreen} />
+      <Tab.Screen name="Inbox" component={InboxScreen} options={{title: 'Messages'}} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

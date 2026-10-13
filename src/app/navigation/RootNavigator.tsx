@@ -17,6 +17,7 @@ import {SubmitBidScreen} from '@features/bids/screens/SubmitBidScreen';
 import {CounterBidScreen} from '@features/bids/screens/CounterBidScreen';
 import {EditListingScreen} from '@features/listings/screens/EditListingScreen';
 import {SellerProfileScreen} from '@features/profile/screens/SellerProfileScreen';
+import {ConversationScreen} from '@features/chat/screens/ConversationScreen';
 import {LoadingSpinner} from '@shared/ui/LoadingSpinner';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -96,6 +97,7 @@ export const RootNavigator: React.FC = () => {
           options={modalScreenOptions}
         />
         <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
+        <Stack.Screen name="Conversation" component={ConversationScreen} />
         <Stack.Screen name="HubSelect" component={HubSelectScreen} />
         <Stack.Screen
           name="Identity"

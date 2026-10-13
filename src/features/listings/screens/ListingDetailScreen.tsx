@@ -36,6 +36,7 @@ import {AppIcon} from '@shared/ui/AppIcon';
 import {AvatarImage, MediaThumb} from '@shared/ui/CachedImage';
 import {shadows} from '@shared/theme/shadows';
 import {Bid, ListingStatus} from '@shared/types';
+import {createConversation} from '@features/chat/chatService';
 
 type Props = RootStackScreenProps<'ListingDetail'>;
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
@@ -200,17 +201,20 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     await openDealWhatsApp(null);
   };
 
-  const handleContactAsking = async () => {
+  const handleMessageSeller = async () => {
     if (!user) {
       navigation.navigate('Auth');
       return;
     }
     if (!currentListing) return;
     try {
-      const url = await contactSeller(currentListing.id);
-      await openWhatsAppUrl(url);
+      const conv = await createConversation(currentListing.id);
+      navigation.navigate('Conversation', {
+        conversationId: conv.id,
+        listingId: currentListing.id,
+      });
     } catch (err: any) {
-      Alert.alert('Contact failed', err.message);
+      Alert.alert('Chat unavailable', err?.response?.data?.message ?? err.message);
     }
   };
 
@@ -730,10 +734,10 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
                 <Text className="text-[15px] font-semibold text-white">Make an Offer</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={handleContactAsking}
+                onPress={() => void handleMessageSeller()}
                 className="mt-2 items-center rounded-xl border border-slate-200 bg-white py-3">
                 <Text className="text-[14px] font-semibold text-brand-black">
-                  Contact at asking price
+                  Message seller
                 </Text>
               </TouchableOpacity>
             </View>

@@ -60,4 +60,15 @@ export const ENDPOINTS = {
     DELETE: (id: string) => `/notifications/${id}`,
   },
   REPORTS: '/reports',
+  CHAT: {
+    CREATE: '/chats',
+    INBOX: '/chats',
+    DETAIL: (id: string) => `/chats/${id}`,
+    READ: (id: string) => `/chats/${id}/read`,
+    KEYS_UPLOAD: '/chats/keys',
+    KEYS_ME: '/chats/keys/me',
+    KEYS_PEER: (userId: string) => `/chats/keys/${userId}`,
+    SEND_MESSAGE: (conversationId: string) => `/chats/${conversationId}/messages`,
+    MESSAGES: (conversationId: string) => `/chats/${conversationId}/messages`,
+  },
 } as const;

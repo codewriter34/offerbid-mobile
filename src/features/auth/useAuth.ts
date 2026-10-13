@@ -28,6 +28,7 @@ import {fetchNotifications} from '@features/notifications/notificationService';
 import {GOOGLE_WEB_CLIENT_ID} from '@shared/config/env';
 import {withTimeout} from '@shared/lib/withTimeout';
 import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '@shared/types';
+import {uploadKeysIfNeeded} from '@features/chat/chatKeySetup';
 
 export function useAuth() {
   const {user, isAuthenticated, isLoading, setUser, setHub} =
@@ -70,6 +71,8 @@ export function useAuth() {
       if (token) {
         connectSocket(token);
       }
+
+      void uploadKeysIfNeeded();
 
       await setupNotifications();
       const granted = await requestPermission();

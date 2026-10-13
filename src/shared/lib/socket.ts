@@ -11,7 +11,8 @@ export type SocketEvent =
   | 'notification:new'
   | 'bid:new'
   | 'bid:updated'
-  | 'listing:updated';
+  | 'listing:updated'
+  | 'chat:message';
 
 interface SocketCallbacks {
   onConnect?: () => void;
@@ -87,6 +88,14 @@ export function subscribeToListing(listingId: string): void {
 
 export function unsubscribeFromListing(listingId: string): void {
   socket?.emit('unsubscribeFromListing', listingId);
+}
+
+export function subscribeToConversation(conversationId: string): void {
+  socket?.emit('subscribeToConversation', {conversationId});
+}
+
+export function unsubscribeFromConversation(conversationId: string): void {
+  socket?.emit('unsubscribeFromConversation', {conversationId});
 }
 
 export function joinRoom(room: string): void {

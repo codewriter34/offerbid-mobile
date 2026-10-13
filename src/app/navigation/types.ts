@@ -30,12 +30,15 @@ export type RootStackParamList = {
   SellerProfile: {userId: string};
   Identity: undefined;
   Notifications: undefined;
+  Inbox: undefined;
+  Conversation: {conversationId: string; listingId: string};
 };
 
 export type MainTabParamList = {
   Explore: undefined;
   MyBids: undefined;
   Selling: undefined;
+  Inbox: undefined;
   Profile: undefined;
 };
 

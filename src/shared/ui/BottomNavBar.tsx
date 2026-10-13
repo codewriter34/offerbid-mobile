@@ -4,6 +4,7 @@ import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {MainTabParamList} from '@app/navigation/types';
 import {useAuthStore} from '@features/auth/authStore';
 import {useBidStore} from '@features/bids/bidStore';
+import {useChatStore} from '@features/chat/chatStore';
 import {colors} from '@shared/theme/colors';
 import {layout} from '@shared/theme/spacing';
 import {shadows} from '@shared/theme/shadows';
@@ -19,6 +20,7 @@ const TABS: Array<{
   {tab: 'Explore', label: 'Explore', icon: 'explore'},
   {tab: 'MyBids', label: 'My Offers', icon: 'bids'},
   {tab: 'Selling', label: 'Selling', icon: 'selling'},
+  {tab: 'Inbox', label: 'Messages', icon: 'inbox'},
   {tab: 'Profile', label: 'Profile', icon: 'profile'},
 ];
 
@@ -30,6 +32,7 @@ export function BottomNavBar({state, navigation, insets}: BottomTabBarProps) {
   const pendingIncoming = useBidStore(
     s => s.incomingBids.filter(b => String(b.status).toUpperCase() === 'PENDING').length,
   );
+  const unreadMessages = useChatStore(s => s.unreadTotal);
   const navActive = state.routes[state.index]?.name as TabKey;
   const [pressedTab, setPressedTab] = useState<TabKey | null>(null);
   const active = pressedTab ?? navActive;
@@ -108,6 +111,13 @@ export function BottomNavBar({state, navigation, insets}: BottomTabBarProps) {
         <NavItem
           label={TABS[3].label}
           icon={TABS[3].icon}
+          active={active === 'Inbox'}
+          badge={unreadMessages}
+          onPress={() => goTab('Inbox')}
+        />
+        <NavItem
+          label={TABS[4].label}
+          icon={TABS[4].icon}
           active={active === 'Profile'}
           onPress={() => goTab('Profile')}
         />

@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, {Circle, Path, Rect} from 'react-native-svg';
 
-export type NavIconName = 'explore' | 'bids' | 'selling' | 'profile' | 'plus';
+export type NavIconName = 'explore' | 'bids' | 'selling' | 'profile' | 'plus' | 'inbox';
 
 interface NavIconProps {
   name: NavIconName;
@@ -121,6 +121,20 @@ export function NavIcon({name, color, size = 22, filled = false}: NavIconProps) 
             strokeWidth={2.5}
             strokeLinecap="round"
           />
+        </Svg>
+      );
+    case 'inbox':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M4.5 5h15A1.5 1.5 0 0 1 21 6.5v9A1.5 1.5 0 0 1 19.5 17H8L3.5 20.5V6.5A1.5 1.5 0 0 1 4.5 5Z"
+            stroke={color}
+            strokeWidth={1.8}
+            strokeLinejoin="round"
+            fill={filled ? color : 'none'}
+            fillOpacity={filled ? 0.15 : 0}
+          />
+          <Path d="M8 10h8M8 13.5h5" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
         </Svg>
       );
   }

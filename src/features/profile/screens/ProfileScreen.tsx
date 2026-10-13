@@ -1,5 +1,5 @@
 import React, {useEffect} from 'react';
-import {View, Text, ScrollView, TouchableOpacity, Alert} from 'react-native';
+import {View, Text, ScrollView, TouchableOpacity, Alert, Switch} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {MainTabScreenProps} from '@app/navigation/types';
 import {useAuth} from '@features/auth/useAuth';
@@ -297,6 +297,14 @@ export const ProfileScreen: React.FC<Props> = ({navigation}) => {
               subtitle="Update your phone number"
               onPress={handleEditPhone}
             />
+            <WhatsAppChatRow user={user} onToggle={async (val) => {
+              try {
+                const updated = await updateProfile({showPhoneInChat: val});
+                updateUser({showPhoneInChat: updated.showPhoneInChat});
+              } catch (err: any) {
+                Alert.alert('Update failed', err?.response?.data?.message ?? err.message);
+              }
+            }} />
             <MenuRow
               icon="bell"
               iconBg="#DBEAFE"
@@ -421,5 +429,33 @@ function MenuRow({
       </View>
       <AppIcon name="chevron" size={16} color="#94A3B8" />
     </TouchableOpacity>
+  );
+}
+
+function WhatsAppChatRow({
+  user,
+  onToggle,
+}: {
+  user: ReturnType<typeof import('@features/auth/authStore').useAuthStore>['user'];
+  onToggle: (val: boolean) => Promise<void>;
+}) {
+  return (
+    <View className="flex-row items-center border-b border-slate-100 px-3.5 py-3.5">
+      <View className="mr-3 h-10 w-10 items-center justify-center rounded-xl bg-[#DCFCE7]">
+        <AppIcon name="whatsapp" size={18} color="#16A34A" />
+      </View>
+      <View className="min-w-0 flex-1">
+        <Text className="text-[15px] font-semibold text-brand-black">Show WhatsApp in chat</Text>
+        <Text className="mt-0.5 text-[12px] text-brand-gray">
+          Buyers can open WhatsApp from your chat thread
+        </Text>
+      </View>
+      <Switch
+        value={user?.showPhoneInChat ?? false}
+        onValueChange={val => void onToggle(val)}
+        trackColor={{false: '#CBD5E1', true: '#25D366'}}
+        thumbColor="#FFFFFF"
+      />
+    </View>
   );
 }
