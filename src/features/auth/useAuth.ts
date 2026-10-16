@@ -28,12 +28,17 @@ import {fetchNotifications} from '@features/notifications/notificationService';
 import {GOOGLE_WEB_CLIENT_ID} from '@shared/config/env';
 import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '@shared/types';
 
+/** Session bootstrap must run once per app launch, not once per screen using useAuth(). */
+let authBootstrapped = false;
+
 export function useAuth() {
   const {user, isAuthenticated, isLoading, setUser, setHub} =
     useAuthStore();
   const tokenRefreshUnsub = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    if (authBootstrapped) return;
+    authBootstrapped = true;
     if (GOOGLE_WEB_CLIENT_ID) {
       configureGoogleSignIn(GOOGLE_WEB_CLIENT_ID);
     }

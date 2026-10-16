@@ -97,6 +97,16 @@ module.exports = {
         },
       ],
       './plugins/withRnFirebasePodfix',
+      [
+        'expo-image-picker',
+        {
+          photosPermission:
+            'OfferBid accesses your photo library so you can choose photos to attach to your listings, offers and profile. For example, you can pick a picture of an item you want to sell and upload it to your listing.',
+          cameraPermission:
+            'OfferBid uses your camera so you can take a photo to attach to your listing or profile. For example, you can snap a picture of an item you want to sell.',
+          microphonePermission: false,
+        },
+      ],
       'expo-secure-store',
       'expo-web-browser',
       'expo-asset',
