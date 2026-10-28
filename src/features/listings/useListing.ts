@@ -20,11 +20,21 @@ export function useListing() {
   const fetchListingById = useCallback(async (id: string) => {
     store.setLoading(true);
     store.setError(null);
+    const cached =
+      store.currentListing?.id === id
+        ? store.currentListing
+        : store.listings.find(item => item.id === id) ??
+          store.myListings.find(item => item.id === id) ??
+          null;
+    store.setCurrentListing(cached);
     try {
       const listing = await fetchListing(id);
       store.setCurrentListing(listing);
       return listing;
     } catch (err: any) {
+      if (store.currentListing?.id !== id) {
+        store.setCurrentListing(null);
+      }
       store.setError(err.response?.data?.message ?? 'Failed to load listing');
       return null;
     } finally {
@@ -85,6 +95,7 @@ export function useListing() {
   }, [store.currentListing?.viewCount]);
 
   const fetchSimilarListings = useCallback(async (id: string) => {
+    setSimilarListings([]);
     try {
       const listings = await fetchSimilarListingsApi(id);
       setSimilarListings(listings);

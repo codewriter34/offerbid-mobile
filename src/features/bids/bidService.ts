@@ -37,6 +37,7 @@ export function mergeBid(current: Bid, incoming: Partial<Bid>): Bid {
     currency: incoming.currency || current.currency,
     minBidPrice: incoming.minBidPrice ?? current.minBidPrice,
     askingPrice: incoming.askingPrice ?? current.askingPrice,
+    whatsappUrl: incoming.whatsappUrl || current.whatsappUrl,
   };
 }
 

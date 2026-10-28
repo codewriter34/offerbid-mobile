@@ -57,14 +57,44 @@ export function extractTokens(data: unknown): {
 export function extractWhatsAppUrl(data: unknown): string | null {
   const raw = asRecord(data);
   const nested = asRecord(raw.data);
-  return pickString(
+  const bid = asRecord(raw.bid ?? nested.bid);
+  const deal = asRecord(raw.deal ?? nested.deal);
+  const candidates = [
     raw.whatsappUrl,
     raw.whatsapp_url,
     raw.whatsapp,
+    raw.chatUrl,
+    raw.chat_url,
+    raw.contactUrl,
+    raw.contact_url,
     nested.whatsappUrl,
     nested.whatsapp_url,
     nested.whatsapp,
-  );
+    nested.chatUrl,
+    nested.chat_url,
+    bid.whatsappUrl,
+    bid.whatsapp_url,
+    bid.whatsapp,
+    deal.whatsappUrl,
+    deal.whatsapp_url,
+    deal.whatsapp,
+  ];
+  for (const value of candidates) {
+    const url = pickString(value);
+    if (!url) continue;
+    if (
+      url.startsWith('https://wa.me/') ||
+      url.startsWith('http://wa.me/') ||
+      url.startsWith('https://api.whatsapp.com/') ||
+      url.startsWith('whatsapp://')
+    ) {
+      return url;
+    }
+    if (url.includes('wa.me') || url.includes('whatsapp')) {
+      return url;
+    }
+  }
+  return null;
 }
 
 const IMAGE_URL_KEYS = [

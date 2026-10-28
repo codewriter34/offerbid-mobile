@@ -39,3 +39,20 @@ export const UPLOAD_PROVIDER =
   (extra.uploadProvider as 's3' | 'cloudinary' | undefined) ??
   (process.env.UPLOAD_PROVIDER as 's3' | 'cloudinary' | undefined) ??
   's3';
+
+export const WEB_BASE_URL = (
+  extra.webBaseUrl ??
+  process.env.WEB_BASE_URL ??
+  process.env.EXPO_PUBLIC_WEB_BASE_URL ??
+  'https://offerbid.co'
+).replace(/\/$/, '');
+
+export function listingShareUrl(publicId: string): string {
+  return `${WEB_BASE_URL}/listings/${encodeURIComponent(publicId)}`;
+}
+
+export function listingShareMessage(title: string, publicId: string): string {
+  const url = listingShareUrl(publicId);
+  const cleanTitle = title.trim() || 'this listing';
+  return `Shop ${cleanTitle} on OfferBid\n${url}`;
+}

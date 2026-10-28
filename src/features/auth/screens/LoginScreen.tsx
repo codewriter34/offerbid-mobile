@@ -7,6 +7,7 @@ import {dismissScreen} from '@app/navigation/navigationRef';
 import {emailTypingHint, isStrongPassword} from '@shared/lib/validators';
 import {
   AuthButton,
+  AuthCheckbox,
   AuthField,
   AuthFooterLink,
   AuthHeading,
@@ -15,9 +16,13 @@ import {
   PasswordRules,
   PasswordToggle,
 } from './AuthUI';
+import {openOfferBidLegal} from '@shared/lib/legal';
 
 type Props = AuthStackScreenProps<'Login'>;
 type Step = 'login' | 'forgot' | 'reset';
+
+/** Flip to true when Google Sign-In UI should ship again. */
+const SHOW_GOOGLE_AUTH = false;
 
 export const LoginScreen: React.FC<Props> = ({navigation}) => {
   const {
@@ -34,6 +39,7 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const emailError = useMemo(() => emailTypingHint(email), [email]);
   const heading =
@@ -44,6 +50,10 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
         : {title: 'Set a new password', sub: 'Use the code from your email, then choose a new password.'};
 
   const handleGoogle = async () => {
+    if (!agreed) {
+      Alert.alert('Terms required', 'Please agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
     setLoading(true);
     try {
       finishAuth(navigation, await signIn());
@@ -55,6 +65,10 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleLogin = async () => {
+    if (!agreed) {
+      Alert.alert('Terms required', 'Please agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
     if (emailError || !email.trim() || !password) return;
     setLoading(true);
     try {
@@ -114,7 +128,7 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
       onClose={() => dismissScreen(navigation)}>
       <AuthHeading title={heading.title} subtitle={heading.sub} centered={step === 'forgot'} />
 
-      {step === 'login' ? (
+      {SHOW_GOOGLE_AUTH && step === 'login' ? (
         <GoogleButton label="Continue with Google" loading={loading} onPress={handleGoogle} />
       ) : null}
 
@@ -172,8 +186,31 @@ export const LoginScreen: React.FC<Props> = ({navigation}) => {
 
       {step === 'forgot' ? <View className="h-5" /> : null}
 
+      {step === 'login' ? (
+        <View className="mb-5">
+          <AuthCheckbox checked={agreed} onToggle={() => setAgreed(v => !v)}>
+            <Text className="text-sm leading-5 text-brand-charcoal">
+              I agree to the{' '}
+              <Text
+                className="font-bold text-brand-blue"
+                onPress={() => void openOfferBidLegal('terms')}>
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text
+                className="font-bold text-brand-blue"
+                onPress={() => void openOfferBidLegal('privacy')}>
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </AuthCheckbox>
+        </View>
+      ) : null}
+
       <AuthButton
         loading={loading}
+        disabled={step === 'login' && !agreed}
         title={
           step === 'login'
             ? 'Sign in'

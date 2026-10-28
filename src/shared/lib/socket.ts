@@ -82,7 +82,7 @@ export function emitEvent(event: string, data?: unknown): void {
 }
 
 export function subscribeToListing(listingId: string): void {
-  socket?.emit('subscribeToListing', listingId);
+  socket?.emit('subscribeToListing', {listingId});
 }
 
 export function unsubscribeFromListing(listingId: string): void {

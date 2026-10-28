@@ -30,7 +30,7 @@ module.exports = {
     name: 'OfferBid',
     slug: 'offerbid',
     owner: 'tamehchana',
-    version: '0.2.0',
+    version: '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'light',
     newArchEnabled: true,
@@ -48,12 +48,14 @@ module.exports = {
       icon: './assets/store/appstore-icon-1024.png',
       infoPlist: {
         UIBackgroundModes: ['remote-notification'],
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
       softwareKeyboardLayoutMode: 'resize',
       package: 'com.offerbid.app',
       googleServicesFile: './google-services.json',
+      allowBackup: false,
       icon: './assets/icon.png',
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
@@ -79,11 +81,32 @@ module.exports = {
         {
           icon: './assets/notification-icon.png',
           color: '#0052FF',
+          mode: 'production',
+          enableBackgroundRemoteNotifications: true,
         },
       ],
       '@react-native-firebase/app',
       '@react-native-firebase/auth',
       '@react-native-firebase/messaging',
+      [
+        'expo-build-properties',
+        {
+          ios: {
+            useFrameworks: 'static',
+          },
+        },
+      ],
+      './plugins/withRnFirebasePodfix',
+      [
+        'expo-image-picker',
+        {
+          photosPermission:
+            'OfferBid accesses your photo library so you can choose photos to attach to your listings, offers and profile. For example, you can pick a picture of an item you want to sell and upload it to your listing.',
+          cameraPermission:
+            'OfferBid uses your camera so you can take a photo to attach to your listing or profile. For example, you can snap a picture of an item you want to sell.',
+          microphonePermission: false,
+        },
+      ],
       'expo-secure-store',
       'expo-web-browser',
       'expo-asset',
@@ -98,6 +121,10 @@ module.exports = {
         process.env.SOCKET_URL ??
         process.env.EXPO_PUBLIC_SOCKET_URL ??
         'wss://offerbid-api.onrender.com/realtime',
+      webBaseUrl:
+        process.env.WEB_BASE_URL ??
+        process.env.EXPO_PUBLIC_WEB_BASE_URL ??
+        'https://offerbid.co',
       uploadProvider:
         process.env.UPLOAD_PROVIDER ??
         process.env.EXPO_PUBLIC_UPLOAD_PROVIDER ??

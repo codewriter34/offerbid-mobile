@@ -75,15 +75,22 @@ export async function signInWithGoogle(): Promise<{
 }
 
 export async function restoreSession(): Promise<User | null> {
-  try {
-    const tokens = await getTokens();
-    if (!tokens) return null;
+  const tokens = await getTokens();
+  if (!tokens) return null;
 
+  try {
     const {data} = await apiClient.get(ENDPOINTS.USERS.ME, {timeout: 8000});
-    return mapUser(data);
-  } catch {
-    await clearTokens();
-    return null;
+    const user = mapUser(data);
+    const {cacheUser} = await import('@shared/lib/session');
+    await cacheUser(user);
+    return user;
+  } catch (error: any) {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      return null;
+    }
+    const {getCachedUser} = await import('@shared/lib/session');
+    return getCachedUser();
   }
 }
 

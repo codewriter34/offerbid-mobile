@@ -6,7 +6,7 @@ import {useMyListings} from '@features/listings/useMyListings';
 import {useRealtimeUser} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {useNotificationStore} from '@features/notifications/notificationStore';
-import {openDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
+import {openAcceptedDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
 import {listingImageUrl} from '@api/normalize';
 import {IncomingOfferCard} from '@features/bids/components/IncomingOfferCard';
 import {EmptyState} from '@shared/ui/EmptyState';
@@ -193,11 +193,7 @@ export const BidDashboardScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleWhatsApp = async (bid: Bid) => {
-    if (bid.whatsappUrl) {
-      await openWhatsAppUrl(bid.whatsappUrl);
-      return;
-    }
-    await openDealWhatsApp(null);
+    await openAcceptedDealWhatsApp(bid);
   };
 
   const header = (

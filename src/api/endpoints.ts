@@ -23,6 +23,7 @@ export const ENDPOINTS = {
     COMPLETE_PROFILE: '/users/complete-profile',
     AVATAR: '/users/me/avatar',
     PUBLIC_PROFILE: (id: string) => `/users/${id}/profile`,
+    BLOCK: (id: string) => `/users/${id}/block`,
   },
   HUBS: {
     LIST: '/hubs',

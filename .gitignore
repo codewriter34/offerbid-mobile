@@ -8,12 +8,9 @@ build/
 dist/
 *.tsbuildinfo
 
-# React Native
-android/app/build/
-android/.gradle/
-android/build/
-ios/Pods/
-ios/build/
+# React Native / Expo prebuild (EAS generates these)
+android/
+ios/
 *.hprof
 
 # Bundle

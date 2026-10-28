@@ -1,4 +1,6 @@
 import {NativeModules} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type {Auth, Persistence} from 'firebase/auth';
 import {IS_EXPO_GO, FIREBASE_WEB_CONFIG} from '@shared/config/env';
 
 type NativeAuthSdk = typeof import('@react-native-firebase/auth');
@@ -18,11 +20,20 @@ function loadNativeAuth(): NativeAuthSdk | null {
   }
 }
 
-function getJsAuth() {
+function getJsAuth(): Auth {
   const {getApps, initializeApp} = require('firebase/app') as typeof import('firebase/app');
-  const {getAuth} = require('firebase/auth') as typeof import('firebase/auth');
+  const auth = require('firebase/auth') as typeof import('firebase/auth') & {
+    getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence;
+  };
+
   const app = getApps()[0] ?? initializeApp(FIREBASE_WEB_CONFIG);
-  return getAuth(app);
+  try {
+    const persistence = auth.getReactNativePersistence(AsyncStorage);
+    return auth.initializeAuth(app, {persistence});
+  } catch {
+    // Already initialized in this JS runtime
+    return auth.getAuth(app);
+  }
 }
 
 export async function firebaseIdTokenFromGoogle(googleIdToken: string): Promise<string> {

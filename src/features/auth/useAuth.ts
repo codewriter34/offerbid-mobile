@@ -23,13 +23,15 @@ import {
   onFCMTokenRefresh,
 } from '@features/notifications/pushService';
 import {getAccessToken} from '@shared/lib/tokenStorage';
-import {clearLocalSession} from '@shared/lib/session';
+import {cacheUser, clearLocalSession, getCachedUser} from '@shared/lib/session';
 import {useNotificationStore} from '@features/notifications/notificationStore';
 import {fetchNotifications} from '@features/notifications/notificationService';
 import {GOOGLE_WEB_CLIENT_ID} from '@shared/config/env';
-import {withTimeout} from '@shared/lib/withTimeout';
 import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '@shared/types';
 import {recordAppOpen} from '@shared/lib/analyticsSession';
+
+/** Session bootstrap must run once per app launch, not once per screen using useAuth(). */
+let authBootstrapped = false;
 
 export function useAuth() {
   const {user, isAuthenticated, isLoading, setUser, setHub} =
@@ -37,6 +39,8 @@ export function useAuth() {
   const tokenRefreshUnsub = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    if (authBootstrapped) return;
+    authBootstrapped = true;
     if (GOOGLE_WEB_CLIENT_ID) {
       configureGoogleSignIn(GOOGLE_WEB_CLIENT_ID);
     }
@@ -54,11 +58,26 @@ export function useAuth() {
 
   const bootstrapAuth = async () => {
     try {
-      const restoredUser = await withTimeout(restoreSession(), 8000, null);
+      const restoredUser = await restoreSession();
       if (restoredUser) {
         setUser(restoredUser);
         void initPostAuthServices();
         void hydrateInbox();
+        return;
+      }
+      const tokens = await getAccessToken();
+      const cachedUser = tokens ? await getCachedUser() : null;
+      if (cachedUser) {
+        setUser(cachedUser);
+        void initPostAuthServices();
+        return;
+      }
+      setUser(null);
+    } catch {
+      const tokens = await getAccessToken();
+      const cachedUser = tokens ? await getCachedUser() : null;
+      if (cachedUser) {
+        setUser(cachedUser);
       } else {
         setUser(null);
       }
@@ -106,6 +125,7 @@ export function useAuth() {
 
   const applySession = async (sessionUser: User) => {
     setUser(sessionUser);
+    void cacheUser(sessionUser);
     void initPostAuthServices();
     void hydrateInbox();
     return sessionUser;

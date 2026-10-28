@@ -5,8 +5,7 @@ import {useBids} from '@features/bids/useBids';
 import {useRealtimeUser} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {useNotificationStore} from '@features/notifications/notificationStore';
-import {openDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
-import {contactSeller} from '@features/listings/listingService';
+import {openAcceptedDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
 import {MyBidCard} from '@features/bids/components/MyBidCard';
 import {EmptyState} from '@shared/ui/EmptyState';
 import {ErrorView} from '@shared/ui/ErrorView';
@@ -105,20 +104,7 @@ export const MyBidsScreen: React.FC<Props> = ({navigation}) => {
   };
 
   const handleWhatsApp = async (bid: Bid) => {
-    if (bid.whatsappUrl) {
-      await openWhatsAppUrl(bid.whatsappUrl);
-      return;
-    }
-    if (bid.listingId) {
-      try {
-        const url = await contactSeller(bid.listingId);
-        await openWhatsAppUrl(url);
-        return;
-      } catch {
-        // Fall through to the shared empty-link message
-      }
-    }
-    await openDealWhatsApp(null);
+    await openAcceptedDealWhatsApp(bid);
   };
 
   const openManage = (bid: Bid) => {
