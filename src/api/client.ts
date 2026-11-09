@@ -34,6 +34,16 @@ function isAuthRefreshRequest(config?: InternalAxiosRequestConfig) {
   return url.includes(ENDPOINTS.AUTH.REFRESH);
 }
 
+/** Public calls. A 401 here must not refresh or clear the signed-in session. */
+function skipsSessionRefresh(config?: InternalAxiosRequestConfig) {
+  const path = config?.url ?? '';
+  return (
+    path.includes(ENDPOINTS.ANALYTICS.SESSION) ||
+    path === ENDPOINTS.ADS.FEED ||
+    path.startsWith(`${ENDPOINTS.ADS.FEED}?`)
+  );
+}
+
 function isSessionInvalid(error: unknown): boolean {
   const status = (error as AxiosError)?.response?.status;
   return status === 401 || status === 403;
@@ -64,6 +74,10 @@ apiClient.interceptors.response.use(
     if (isAuthRefreshRequest(originalRequest)) {
       const {clearLocalSession} = await import('@shared/lib/session');
       await clearLocalSession();
+      return Promise.reject(error);
+    }
+
+    if (skipsSessionRefresh(originalRequest)) {
       return Promise.reject(error);
     }
 

@@ -14,6 +14,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {RootStackScreenProps} from '@app/navigation/types';
 import {dismissScreen} from '@app/navigation/navigationRef';
 import {useBids} from '@features/bids/useBids';
+import {useAuthStore} from '@features/auth/authStore';
 import {isValidBidAmount} from '@shared/lib/validators';
 import {formatPrice} from '@shared/lib/formatters';
 import {AmountInput} from '@features/bids/components/AmountInput';
@@ -29,6 +30,7 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
   const isRecounter = Boolean(recounter);
   const isUpdate = Boolean(bidId) && !isRecounter;
   const insets = useSafeAreaInsets();
+  const user = useAuthStore(s => s.user);
   const scrollRef = useRef<ScrollView>(null);
   const {submitBid} = useBids();
   const [amount, setAmount] = useState(() => {
@@ -38,6 +40,12 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!user) {
+      navigation.replace('Auth', {screen: 'Signup'});
+    }
+  }, [navigation, user]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -94,6 +102,8 @@ export const SubmitBidScreen: React.FC<Props> = ({route, navigation}) => {
       setSubmitting(false);
     }
   };
+
+  if (!user) return null;
 
   return (
     <View className="flex-1 bg-white">

@@ -4,6 +4,7 @@ import {Bid, BidStatus} from '@shared/types/bid';
 import {AppNotification, NotificationType} from '@shared/types/notification';
 import {CountryHub, Hub, HubsResponse} from '@shared/types/hub';
 import {Identity, IdentityStatus} from '@shared/types/identity';
+import {SponsoredAd} from '@shared/types/ad';
 import {extractList, extractWhatsAppUrl, extractImageUrl, extractImageUrls, listingImageUrl, pickNumber, pickString} from './normalize';
 
 type Raw = Record<string, any>;
@@ -345,6 +346,31 @@ export function mapHubs(rawInput: unknown): HubsResponse {
 
   const cities = [...new Set(hubs.map(h => h.city).filter(Boolean))];
   return {hubs, countries, categories, cities, allowOther, otherLabel};
+}
+
+export function mapSponsoredAd(rawInput: unknown): SponsoredAd | null {
+  const raw = asRecord(rawInput);
+  const title = pickString(raw.title);
+  const destinationUrl = pickString(raw.destinationUrl, raw.destination_url);
+  if (!title || !destinationUrl || !/^https?:\/\//i.test(destinationUrl)) return null;
+  const placement = pickString(raw.placement);
+  const slot = pickString(raw.slot);
+  if (placement && placement.toUpperCase() !== 'FEED') return null;
+  if (slot && slot.toUpperCase() !== 'FEED_TOP') return null;
+  return {
+    id: pickString(raw.id) ?? destinationUrl,
+    sponsored: true,
+    slot: (slot ?? 'FEED_TOP').toUpperCase(),
+    advertiserName: pickString(raw.advertiserName, raw.advertiser_name),
+    title,
+    body: pickString(raw.body),
+    ctaLabel: pickString(raw.ctaLabel, raw.cta_label) ?? 'Learn more',
+    destinationUrl,
+    imageUrl: pickString(raw.imageUrl, raw.image_url),
+    placement: placement ? placement.toUpperCase() : 'FEED',
+    country: pickString(raw.country),
+    city: pickString(raw.city),
+  };
 }
 
 export function mapListings(data: unknown): Listing[] {
