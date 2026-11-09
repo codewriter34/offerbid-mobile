@@ -12,6 +12,7 @@ export {
   unreadCountFrom,
   mapIdentity,
   mapHubs,
+  mapSponsoredAd,
 } from './mappers';
 export {
   extractTokens,

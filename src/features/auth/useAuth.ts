@@ -1,5 +1,4 @@
 import {useCallback, useEffect, useRef} from 'react';
-import {AppState} from 'react-native';
 import {useAuthStore} from '@features/auth/authStore';
 import {
   signInWithGoogle,
@@ -28,7 +27,7 @@ import {useNotificationStore} from '@features/notifications/notificationStore';
 import {fetchNotifications} from '@features/notifications/notificationService';
 import {GOOGLE_WEB_CLIENT_ID} from '@shared/config/env';
 import {LoginPayload, RegisterPayload, User, VerifyOtpPayload} from '@shared/types';
-import {recordAppOpen} from '@shared/lib/analyticsSession';
+import {recordColdStart, startAppOpenTracking} from '@shared/lib/analyticsSession';
 
 /** Session bootstrap must run once per app launch, not once per screen using useAuth(). */
 let authBootstrapped = false;
@@ -44,15 +43,11 @@ export function useAuth() {
     if (GOOGLE_WEB_CLIENT_ID) {
       configureGoogleSignIn(GOOGLE_WEB_CLIENT_ID);
     }
+    startAppOpenTracking();
     bootstrapAuth();
-
-    const appStateSub = AppState.addEventListener('change', nextState => {
-      if (nextState === 'active') void recordAppOpen();
-    });
 
     return () => {
       tokenRefreshUnsub.current?.();
-      appStateSub.remove();
     };
   }, []);
 
@@ -74,20 +69,18 @@ export function useAuth() {
       }
       setUser(null);
     } catch {
-      const tokens = await getAccessToken();
-      const cachedUser = tokens ? await getCachedUser() : null;
-      if (cachedUser) {
+      try {
+        const tokens = await getAccessToken();
+        const cachedUser = tokens ? await getCachedUser() : null;
         setUser(cachedUser);
-      } else {
+      } catch {
         setUser(null);
       }
-      void recordAppOpen();
-    } catch {
-      setUser(null);
     } finally {
       if (useAuthStore.getState().isLoading) {
         useAuthStore.getState().setLoading(false);
       }
+      void recordColdStart();
     }
   };
 

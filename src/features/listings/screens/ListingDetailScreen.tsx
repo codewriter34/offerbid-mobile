@@ -202,11 +202,14 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
     await openAcceptedDealWhatsApp(bid, currentListing?.id);
   };
 
+  const requireAccount = () => {
+    if (user) return true;
+    navigation.navigate('Auth', {screen: 'Signup'});
+    return false;
+  };
+
   const handleContactAsking = async () => {
-    if (!user) {
-      navigation.navigate('Auth');
-      return;
-    }
+    if (!requireAccount()) return;
     if (!currentListing) return;
     try {
       const url = await contactSeller(currentListing.id);
@@ -766,10 +769,7 @@ export const ListingDetailScreen: React.FC<Props> = ({route, navigation}) => {
             <View>
               <TouchableOpacity
                 onPress={() => {
-                  if (!user) {
-                    navigation.navigate('Auth');
-                    return;
-                  }
+                  if (!requireAccount()) return;
                   navigation.navigate('SubmitBid', {
                     listingId: currentListing.id,
                     listingTitle: currentListing.title,

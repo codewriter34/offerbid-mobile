@@ -14,6 +14,8 @@ import {useRealtimeBids} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
 import {useHubStore} from '@features/auth/hubStore';
 import {ListingCard} from '@features/listings/components/ListingCard';
+import {SponsoredFeedCard} from '@features/ads/SponsoredFeedCard';
+import {useSponsoredAd} from '@features/ads/useSponsoredAd';
 import {EmptyState} from '@shared/ui/EmptyState';
 import {ErrorView} from '@shared/ui/ErrorView';
 import {LoadingSpinner} from '@shared/ui/LoadingSpinner';
@@ -43,6 +45,7 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
   const selectedHub = useAuthStore(s => s.selectedHub);
   const categories = useHubStore(s => s.categories);
   const {unreadCount, fetchNotifications} = useNotifications();
+  const {ad, refresh: refreshAd} = useSponsoredAd();
   const [searchText, setSearchText] = useState('');
 
   useRealtimeBids();
@@ -59,10 +62,11 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
 
   const handleRefresh = useCallback(() => {
     fetchListings(true);
+    void refreshAd();
     if (user) {
       void fetchNotifications();
     }
-  }, [fetchListings, user, fetchNotifications]);
+  }, [fetchListings, refreshAd, user, fetchNotifications]);
 
   const handleEndReached = useCallback(() => {
     if (hasMore && !isLoadingMore) {
@@ -123,6 +127,11 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
           <View className="border-b border-slate-200 bg-white pb-2 pt-2">
             {header}
           </View>
+          {ad ? (
+            <View className="px-4 pt-3">
+              <SponsoredFeedCard ad={ad} />
+            </View>
+          ) : null}
           <LoadingSpinner message="Loading listings..." />
         </View>
       </AppShell>
@@ -136,6 +145,11 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
           <View className="border-b border-slate-200 bg-white pb-2 pt-2">
             {header}
           </View>
+          {ad ? (
+            <View className="px-4 pt-3">
+              <SponsoredFeedCard ad={ad} />
+            </View>
+          ) : null}
           <ErrorView message={error} onRetry={handleRefresh} />
         </View>
       </AppShell>
@@ -208,6 +222,7 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
           data={listings}
           keyExtractor={item => item.id}
           numColumns={2}
+          ListHeaderComponent={ad ? <SponsoredFeedCard ad={ad} /> : null}
           columnWrapperClassName="gap-3"
           contentContainerClassName="grow px-4 pt-3 pb-4"
           renderItem={({item}) => (

@@ -64,4 +64,7 @@ export const ENDPOINTS = {
   ANALYTICS: {
     SESSION: '/analytics/session',
   },
+  ADS: {
+    FEED: '/ads',
+  },
 } as const;
