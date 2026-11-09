@@ -114,6 +114,72 @@ Track daily progress, decisions, blockers, and notes here.
 
 ---
 
+## 2026-08-22 — New API Features (Delete, Edit, Profile, Views, Similar, Notifications)
+
+**Author:** Adrian (Dev A)
+
+### What was done
+
+**API Endpoints added:**
+- `PATCH /listings/:id` — seller can update title, description, prices, category, images on active listings
+- `DELETE /listings/:id` — seller can delete own listing (blocked if accepted bid exists)
+- `POST /listings/:id/view` — atomic view count increment, no auth required
+- `GET /listings/:id/similar` — up to 6 active listings in same category + location
+- `PATCH /users/me` — partial profile update (name, city, location, address, primaryIntent, phone)
+- `GET /users/:id/profile` — public seller profile (no email/phone exposed) + active listing count
+- `DELETE /notifications/:id` — delete a single owned notification
+
+**Types added:**
+- `UpdateListingPayload` (title, description, askingPrice, minBidPrice, category, location, images)
+- `UpdateProfilePayload` (fullName, city, location, address, primaryIntent, phone)
+- `PublicProfile` (id, fullName, avatarUrl, isVerified, city, location, activeListingCount, createdAt)
+- `viewCount` field added to `Listing` interface
+
+**Services updated:**
+- `listingService` — added `updateListing`, `deleteListing`, `incrementViewCount`, `fetchSimilarListings`
+- `profileService` — added `updateProfile`, `fetchPublicProfile`
+- `notificationService` — added `deleteNotification`
+
+**Stores updated:**
+- `notificationStore` — added `removeNotification` action
+
+**Hooks updated:**
+- `useListing` — added `updateListing`, `deleteListing`, `incrementViewCount`, `fetchSimilarListings`, `similarListings` state
+- `useNotifications` — added `deleteNotification`
+
+**Screens:**
+- `EditListingScreen` (new) — modal form pre-filled from current listing, validates + uploads new images + PATCHes API
+- `SellerProfileScreen` (new) — public profile view with avatar, name, verification badge, active listings count, member since
+- `ListingDetailScreen` — added view count display, seller card now tappable (navigates to SellerProfile), Edit/Delete buttons for sellers, similar listings horizontal list at bottom, view increment on load
+- `NotificationCenterScreen` — long-press on notification shows delete confirmation
+- `ProfileScreen` — added "Edit name" and "Edit phone" menu items using `PATCH /users/me`
+
+**Navigation:**
+- Added `EditListing` and `SellerProfile` routes to `RootStackParamList`
+- Registered both screens in `RootNavigator`
+
+**Mappers:**
+- Added `mapPublicProfile` for `GET /users/:id/profile` responses
+- Added `viewCount` mapping in `mapListing`
+
+### Decisions
+- **Delete with confirmation** — delete always asks "Are you sure?" and warns about pending bid cascade
+- **Long-press for notification delete** — keeps the tap action for mark-read + navigate, long-press surfaces delete
+- **Optimistic notification delete** — removes from store immediately, API call is fire-and-forget
+- **View count fire-and-forget** — POST /listings/:id/view errors are silently ignored, never block UI
+- **Edit restricted to ACTIVE** — edit button only shows when listing status is ACTIVE (not SOLD/CLOSED)
+- **Profile edit via Alert.prompt** — used native Alert.prompt for inline name/phone editing on iOS; Android fallback message directs to Settings
+
+### Blockers
+- Same as before: Firebase, Google Sign-In, Cloudinary credentials not yet configured
+
+### Next steps
+- [ ] Build "Edit Profile" as a full-screen form (replace Alert.prompt approach for Android)
+- [ ] End-to-end testing with live API
+- [ ] Price range slider component for feed filters
+
+---
+
 ## Template for future entries
 
 ```markdown

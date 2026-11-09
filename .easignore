@@ -1,0 +1,59 @@
+# Same as .gitignore, except Firebase client files are uploaded to EAS.
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+build/
+dist/
+*.tsbuildinfo
+
+# React Native / Expo prebuild (EAS generates these)
+android/
+ios/
+*.hprof
+
+# Bundle
+*.jsbundle
+*.bundle
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Firebase admin keys stay off EAS
+*firebase-adminsdk*.json
+google-services(*).json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Testing
+coverage/
+
+# Metro
+.metro-health-check*
+
+# Expo
+.expo/
+web-build/
+
+# Temporary
+tmp/
+temp/
+
+# Include gitignored Firebase client files in the EAS upload
+!google-services.json
+!GoogleService-Info.plist

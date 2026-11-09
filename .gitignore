@@ -8,12 +8,9 @@ build/
 dist/
 *.tsbuildinfo
 
-# React Native
-android/app/build/
-android/.gradle/
-android/build/
-ios/Pods/
-ios/build/
+# React Native / Expo prebuild (EAS generates these)
+android/
+ios/
 *.hprof
 
 # Bundle
@@ -24,6 +21,13 @@ ios/build/
 .env
 .env.local
 .env.production
+
+# Firebase — keep client files off GitHub; .easignore uploads them to EAS Build
+*firebase-adminsdk*.json
+google-services.json
+google-services(*).json
+GoogleService-Info.plist
+
 
 # IDE
 .vscode/
@@ -42,6 +46,11 @@ coverage/
 
 # Metro
 .metro-health-check*
+
+# Expo
+.expo/
+dist/
+web-build/
 
 # Temporary
 tmp/

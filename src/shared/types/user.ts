@@ -1,0 +1,74 @@
+export type Country = 'CAMEROON' | 'NIGERIA';
+
+export interface User {
+  id: string;
+  email: string | null;
+  fullName: string;
+  phone: string | null;
+  countryCode: string | null;
+  country: Country | string | null;
+  city: string | null;
+  address: string | null;
+  location: string | null;
+  avatarUrl: string | null;
+  profileComplete: boolean;
+  isVerified: boolean;
+  googleId: string | null;
+  createdAt: string | null;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  fullName: string;
+  country: Country;
+  countryCode?: string;
+  phone?: string;
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  code: string;
+  purpose?: 'EMAIL_VERIFY' | 'PASSWORD_RESET';
+}
+
+export interface CompleteProfilePayload {
+  city: string;
+  address: string;
+  location: string;
+}
+
+export interface GoogleAuthPayload {
+  idToken: string;
+}
+
+export interface UpdateProfilePayload {
+  fullName?: string;
+  city?: string;
+  location?: string;
+  address?: string;
+  primaryIntent?: string;
+  phone?: string;
+  countryCode?: string;
+}
+
+export interface PublicProfile {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  isVerified: boolean;
+  city: string | null;
+  location: string | null;
+  activeListingCount: number;
+  createdAt: string | null;
+}

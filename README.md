@@ -2,7 +2,7 @@
 
 A hyper-local second-hand marketplace app built with React Native. Replaces chaotic WhatsApp/Facebook trading with a structured, searchable, hub-based catalog and a counter-bidding engine, closing every deal through a WhatsApp handshake for offline payment (cash / MoMo).
 
-**Platform:** React Native (Android-first, iOS-ready)
+**Platform:** Expo SDK 54 (React Native 0.81, Android-first, iOS-ready)
 **Backend:** NestJS (deployed on Render)
 **Database:** PostgreSQL (managed)
 
@@ -38,14 +38,10 @@ npm install
 cp .env.example .env
 # Fill in your API keys in .env
 
-# Start Metro bundler
-npm start
+# Start Expo
+npx expo start
 
-# Run on Android
-npm run android
-
-# Run on iOS (macOS only)
-npm run ios
+# Then press a to open Android, i to open iOS, or scan the QR code in Expo Go
 ```
 
 ### Prerequisites
@@ -287,7 +283,7 @@ Copy `.env.example` to `.env` and fill in:
 | `socket.io-client` | Real-time WebSocket |
 | `@react-native-firebase/messaging` | FCM push delivery |
 | `@notifee/react-native` | Push notification display |
-| `react-native-image-resizer` | Client-side image compression |
+| `@bam.tech/react-native-image-resizer` | Client-side image compression |
 | `zustand` | Lightweight state management |
 | `react-native-safe-area-context` | Safe area handling |
 | `react-native-screens` | Native screen optimization |

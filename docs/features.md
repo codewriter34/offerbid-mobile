@@ -56,6 +56,16 @@ Status legend: `[ ]` Not started | `[~]` In progress | `[x]` Complete | `[-]` De
 | Zustand state management | store/ | 2026-08-14 | authStore, listingStore, bidStore, notificationStore |
 | API client with interceptors | apiClient service | 2026-08-14 | Bearer token injection, 401 refresh with request queue |
 | Utility functions | utils/ | 2026-08-14 | formatPrice (XAF/NGN), formatRelativeTime, formatCountdown, validators |
+| DELETE /listings/:id | ListingDetail | 2026-08-22 | Seller deletes own listing, blocked if accepted bid exists, cascades pending bids |
+| PATCH /listings/:id | EditListing (new screen) | 2026-08-22 | Update title, description, prices, category, images on active listings |
+| PATCH /users/me — profile update | Profile | 2026-08-22 | Partial update: name, city, location, address, primaryIntent, phone |
+| GET /users/:id/profile — public profile | SellerProfile (new screen) | 2026-08-22 | Shows fullName, avatar, verified badge, active listing count; no email/phone |
+| POST /listings/:id/view — view count | ListingDetail | 2026-08-22 | Atomic increment on detail screen load, no auth required, fire-and-forget |
+| GET /listings/:id/similar | ListingDetail | 2026-08-22 | Up to 6 active listings in same category + location, shown in horizontal scroll |
+| DELETE /notifications/:id | NotificationCenter | 2026-08-22 | Long-press to delete, optimistic removal from store |
+| Edit listing screen | EditListing | 2026-08-22 | Modal form pre-filled from current listing data, full validation, image management |
+| Seller profile screen | SellerProfile | 2026-08-22 | Public profile view with avatar, verification status, active listing count |
+| Listing view count display | ListingDetail | 2026-08-22 | Shows view count next to posted time on listing detail |
 
 ---
 
