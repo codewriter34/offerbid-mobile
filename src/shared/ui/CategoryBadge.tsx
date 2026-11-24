@@ -1,6 +1,8 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {ListingCategory} from '@shared/types';
+import {useHubStore} from '@features/auth/hubStore';
+import {categoryLabel} from '@shared/lib/categoryLabel';
 import {typography} from '@shared/theme/typography';
 import {borderRadius} from '@shared/theme/spacing';
 
@@ -28,6 +30,9 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
   category,
   size = 'sm',
 }) => {
+  const categories = useHubStore(s => s.categories);
+  const locale = useHubStore(s => s.locale);
+  const label = categoryLabel(category, categories, locale);
   const palette = CATEGORY_COLORS[category] ?? {bg: '#F5F5F5', text: '#666'};
   const isSmall = size === 'sm';
 
@@ -46,7 +51,7 @@ export const CategoryBadge: React.FC<CategoryBadgeProps> = ({
           isSmall ? styles.textSm : styles.textMd,
           {color: palette.text},
         ]}>
-        {category}
+        {label}
       </Text>
     </View>
   );

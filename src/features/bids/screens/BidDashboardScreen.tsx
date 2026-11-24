@@ -5,6 +5,7 @@ import {useBids} from '@features/bids/useBids';
 import {useMyListings} from '@features/listings/useMyListings';
 import {useRealtimeUser} from '@features/bids/useRealtimeBids';
 import {useAuthStore} from '@features/auth/authStore';
+import {useHubStore} from '@features/auth/hubStore';
 import {useNotificationStore} from '@features/notifications/notificationStore';
 import {openAcceptedDealWhatsApp, openWhatsAppUrl} from '@shared/lib/whatsapp';
 import {listingImageUrl} from '@api/normalize';
@@ -16,6 +17,7 @@ import {AppShell} from '@shared/ui/AppShell';
 import {NotificationBell} from '@shared/ui/NotificationBell';
 import {FilterChip} from '@shared/ui/FilterChip';
 import {formatPrice} from '@shared/lib/formatters';
+import {categoryLabel} from '@shared/lib/categoryLabel';
 import {shadows} from '@shared/theme/shadows';
 import {AppIcon} from '@shared/ui/AppIcon';
 import {MediaThumb} from '@shared/ui/CachedImage';
@@ -396,6 +398,8 @@ function ListingRow({
   listing: Listing;
   onPress: () => void;
 }) {
+  const categories = useHubStore(s => s.categories);
+  const locale = useHubStore(s => s.locale);
   const status = String(listing.status).toUpperCase();
   const chip =
     status === 'ACTIVE'
@@ -404,6 +408,7 @@ function ListingRow({
         ? {bg: '#D1FAE5', fg: '#047857', label: 'Sold'}
         : {bg: '#F1F5F9', fg: '#64748B', label: 'Closed'};
   const image = listingImageUrl(listing);
+  const categoryText = categoryLabel(listing.category, categories, locale);
 
   return (
     <TouchableOpacity
@@ -424,8 +429,8 @@ function ListingRow({
         <Text className="mt-0.5 text-sm font-semibold text-brand-black">
           {formatPrice(listing.askingPrice, listing.currency)}
         </Text>
-        {listing.category ? (
-          <Text className="mt-0.5 text-[12px] text-brand-gray">{listing.category}</Text>
+        {categoryText ? (
+          <Text className="mt-0.5 text-[12px] text-brand-gray">{categoryText}</Text>
         ) : null}
       </View>
       <View className="rounded-full px-2.5 py-1" style={{backgroundColor: chip.bg}}>

@@ -194,10 +194,11 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
             horizontal
             showsHorizontalScrollIndicator={false}
             data={[null, ...categories]}
-            keyExtractor={item => item ?? 'all'}
+            keyExtractor={item => item?.value ?? 'all'}
             contentContainerClassName="gap-2 px-4 pb-2"
             renderItem={({item}) => {
-              const isActive = filters.category === item;
+              const value = item?.value ?? null;
+              const isActive = filters.category === value;
               return (
                 <TouchableOpacity
                   className={`rounded-full border px-4 py-1.5 ${
@@ -205,12 +206,12 @@ export const FeedScreen: React.FC<Props> = ({navigation}) => {
                       ? 'border-brand-blue bg-brand-blue'
                       : 'border-slate-200 bg-brand-white'
                   }`}
-                  onPress={() => handleCategoryFilter(item)}>
+                  onPress={() => handleCategoryFilter(value)}>
                   <Text
                     className={`text-sm ${
                       isActive ? 'font-semibold text-white' : 'text-brand-charcoal'
                     }`}>
-                    {item ?? 'All'}
+                    {item?.label ?? 'All'}
                   </Text>
                 </TouchableOpacity>
               );

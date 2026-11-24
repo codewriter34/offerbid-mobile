@@ -2,6 +2,7 @@ import apiClient from '@api/client';
 import {ENDPOINTS} from '@api/endpoints';
 import {mapUser, mapPublicProfile} from '@api/mappers';
 import {getRefreshToken, clearTokens} from '@shared/lib/tokenStorage';
+import {getAppLocale} from '@shared/lib/locale';
 import {UpdateProfilePayload} from '@shared/types';
 
 export async function updateAvatar(url: string) {
@@ -10,7 +11,10 @@ export async function updateAvatar(url: string) {
 }
 
 export async function updateProfile(payload: UpdateProfilePayload) {
-  const {data} = await apiClient.patch(ENDPOINTS.USERS.ME, payload);
+  const {data} = await apiClient.patch(ENDPOINTS.USERS.ME, {
+    ...payload,
+    locale: payload.locale ?? getAppLocale(),
+  });
   return mapUser(data);
 }
 

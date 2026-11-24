@@ -13,10 +13,21 @@ export interface CountryHub {
   cities: Record<string, string[]>;
 }
 
+export interface HubCategory {
+  /** Stable English key. Always send this on create / edit / filter / search. */
+  value: string;
+  /** Localized label for the requested locale. */
+  label: string;
+  labels: {
+    en: string;
+    fr: string;
+  };
+}
+
 export interface HubsResponse {
   hubs: Hub[];
   countries: CountryHub[];
-  categories: string[];
+  categories: HubCategory[];
   cities: string[];
   allowOther: boolean;
   otherLabel: string;

@@ -12,6 +12,7 @@ export {
   unreadCountFrom,
   mapIdentity,
   mapHubs,
+  mapHubCategories,
   mapSponsoredAd,
 } from './mappers';
 export {

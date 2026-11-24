@@ -29,11 +29,13 @@ export interface RegisterPayload {
   country: Country;
   countryCode?: string;
   phone?: string;
+  locale?: 'en' | 'fr';
 }
 
 export interface LoginPayload {
   email: string;
   password: string;
+  locale?: 'en' | 'fr';
 }
 
 export interface VerifyOtpPayload {
@@ -50,6 +52,7 @@ export interface CompleteProfilePayload {
 
 export interface GoogleAuthPayload {
   idToken: string;
+  locale?: 'en' | 'fr';
 }
 
 export interface UpdateProfilePayload {
@@ -60,6 +63,7 @@ export interface UpdateProfilePayload {
   primaryIntent?: string;
   phone?: string;
   countryCode?: string;
+  locale?: 'en' | 'fr';
 }
 
 export interface PublicProfile {

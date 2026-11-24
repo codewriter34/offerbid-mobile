@@ -298,18 +298,18 @@ export const CreateListingScreen: React.FC<Props> = ({navigation}) => {
       <View style={styles.categoryGrid}>
         {categories.map(cat => (
           <TouchableOpacity
-            key={cat}
+            key={cat.value}
             style={[
               styles.categoryChip,
-              category === cat && styles.categoryChipActive,
+              category === cat.value && styles.categoryChipActive,
             ]}
-            onPress={() => setCategory(cat)}>
+            onPress={() => setCategory(cat.value)}>
             <Text
               style={[
                 styles.categoryChipText,
-                category === cat && styles.categoryChipTextActive,
+                category === cat.value && styles.categoryChipTextActive,
               ]}>
-              {cat}
+              {cat.label}
             </Text>
           </TouchableOpacity>
         ))}

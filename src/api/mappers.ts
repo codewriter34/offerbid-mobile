@@ -2,7 +2,7 @@ import {User, PublicProfile} from '@shared/types/user';
 import {Listing, ListingImage, ListingStatus} from '@shared/types/listing';
 import {Bid, BidStatus} from '@shared/types/bid';
 import {AppNotification, NotificationType} from '@shared/types/notification';
-import {CountryHub, Hub, HubsResponse} from '@shared/types/hub';
+import {CountryHub, Hub, HubCategory, HubsResponse} from '@shared/types/hub';
 import {Identity, IdentityStatus} from '@shared/types/identity';
 import {SponsoredAd} from '@shared/types/ad';
 import {extractList, extractWhatsAppUrl, extractImageUrl, extractImageUrls, listingImageUrl, pickNumber, pickString} from './normalize';
@@ -273,9 +273,33 @@ function mapStringList(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
 }
 
+export function mapHubCategories(value: unknown): HubCategory[] {
+  if (!Array.isArray(value)) return [];
+  const out: HubCategory[] = [];
+  value.forEach(item => {
+    if (typeof item === 'string' && item.length > 0) {
+      out.push({value: item, label: item, labels: {en: item, fr: item}});
+      return;
+    }
+    const rec = asRecord(item);
+    const categoryValue = pickString(rec.value);
+    if (!categoryValue) return;
+    const labelsRec = asRecord(rec.labels);
+    const en = pickString(labelsRec.en) ?? categoryValue;
+    const fr = pickString(labelsRec.fr) ?? pickString(rec.label) ?? categoryValue;
+    const label = pickString(rec.label) ?? en;
+    out.push({
+      value: categoryValue,
+      label,
+      labels: {en, fr},
+    });
+  });
+  return out;
+}
+
 export function mapHubs(rawInput: unknown): HubsResponse {
   const raw = asRecord(rawInput);
-  const categories = mapStringList(raw.categories);
+  const categories = mapHubCategories(raw.categories);
   const allowOther = Boolean(raw.allowOther);
   const otherLabel = pickString(raw.otherLabel) ?? 'Other';
   const hubs: Hub[] = [];

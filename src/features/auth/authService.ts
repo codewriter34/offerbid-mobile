@@ -6,6 +6,7 @@ import {extractTokens} from '@api/normalize';
 import {mapUser} from '@api/mappers';
 import {getGoogleIdToken, signOutGoogle} from './googleAuth';
 import {firebaseIdTokenFromGoogle, signOutFirebase} from './firebaseAuth';
+import {getAppLocale} from '@shared/lib/locale';
 
 export {GoogleSignInStatusCodes, configureGoogleSignIn} from './googleAuth';
 
@@ -25,7 +26,10 @@ async function persistSession(data: unknown): Promise<{tokens: AuthTokens; user:
 }
 
 export async function registerAccount(payload: RegisterPayload): Promise<void> {
-  await apiClient.post(ENDPOINTS.AUTH.REGISTER, payload);
+  await apiClient.post(ENDPOINTS.AUTH.REGISTER, {
+    ...payload,
+    locale: payload.locale ?? getAppLocale(),
+  });
 }
 
 export async function verifyOtp(payload: VerifyOtpPayload): Promise<{
@@ -47,7 +51,10 @@ export async function loginWithEmail(payload: LoginPayload): Promise<{
   tokens: AuthTokens;
   user: User;
 }> {
-  const {data} = await apiClient.post(ENDPOINTS.AUTH.LOGIN, payload);
+  const {data} = await apiClient.post(ENDPOINTS.AUTH.LOGIN, {
+    ...payload,
+    locale: payload.locale ?? getAppLocale(),
+  });
   return persistSession(data);
 }
 
@@ -70,7 +77,10 @@ export async function signInWithGoogle(): Promise<{
 }> {
   const googleIdToken = await getGoogleIdToken();
   const idToken = await firebaseIdTokenFromGoogle(googleIdToken);
-  const {data} = await apiClient.post(ENDPOINTS.AUTH.GOOGLE, {idToken});
+  const {data} = await apiClient.post(ENDPOINTS.AUTH.GOOGLE, {
+    idToken,
+    locale: getAppLocale(),
+  });
   return persistSession(data);
 }
 
